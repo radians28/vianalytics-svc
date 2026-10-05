@@ -1,7 +1,7 @@
 from app.extensions import db
 
 class CustomPeriod(db.Model):
-    __table_name__ = 'custom_period'
+    __tablename__ = 'custom_period'
 
     period_key = db.Column(db.Integer, nullable=False, primary_key=True)
     year = db.Column(db.Integer, nullable=False)
