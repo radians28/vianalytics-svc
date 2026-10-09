@@ -4,8 +4,8 @@
 #             cron jobs run once per replica)
 #   api     - API only (scale freely with GUNICORN_WORKERS / replicas)
 #   cron    - cron worker only (run exactly one)
-#   migrate - apply DB migrations, then exit
-# RUN_MIGRATIONS=1 applies migrations before starting api/all.
+#   migrate - apply DB migrations and seed initial data, then exit
+# RUN_MIGRATIONS=1 applies migrations (then seeding) before starting api/all.
 set -e
 
 run_api() {
@@ -21,6 +21,13 @@ run_api() {
 migrate() {
     echo "Applying database migrations..."
     flask db upgrade
+    # Idempotent: seed.py skips the admin if that email already exists
+    if [ -n "${SEED_ADMIN_PASSWORD:-}" ]; then
+        echo "Seeding initial data..."
+        python seed.py
+    else
+        echo "SEED_ADMIN_PASSWORD not set; skipping seeding"
+    fi
 }
 
 case "${SVC_ROLE:-all}" in
