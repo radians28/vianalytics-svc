@@ -8,6 +8,5 @@ psycopg2-binary>=2.9
 pydantic
 email-validator
 pyjwt
-aiocron
 python-dotenv
 gunicorn

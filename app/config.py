@@ -42,6 +42,3 @@ class Config:
         for origin in os.environ.get("CORS_ORIGINS", "*").split(",")
         if origin.strip()
     ]
-
-    # Timezone for cron schedules; defaults to Jakarta, like the rest of the app
-    CRON_TIMEZONE = os.environ.get("CRON_TIMEZONE") or APP_TIMEZONE

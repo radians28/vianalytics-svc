@@ -23,7 +23,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
     TZ=Asia/Jakarta \
     FLASK_APP=run \
     UPLOAD_FOLDER=/data/uploads \
-    SVC_ROLE=all \
+    SVC_ROLE=api \
     PORT=3000
 
 RUN useradd --system --uid 10001 --home-dir /app app \
