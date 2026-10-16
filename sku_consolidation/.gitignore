@@ -1,0 +1,6 @@
+# raw exports and generated pipeline output (large / shared via Drive)
+raw/
+stg/
+sku_master/
+transaction/
+__pycache__/
