@@ -2,11 +2,12 @@ from app.common.helpers import (gen_uuid, jakarta_now)
 from app.extensions import db
 
 class UploadProgress(db.Model):
-    __table_name__ = 'upload_progress'
+    __tablename__ = 'upload_progress'
 
     upload_id = db.Column(db.String(36), primary_key=True, default=gen_uuid)
     file_name = db.Column(db.String(255), nullable=False)
     file_path = db.Column(db.String(500), nullable=False)
+    channel = db.Column(db.String(50), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='Queued', index=True)
     total_rows = db.Column(db.Integer, nullable=True)
     processed_rows = db.Column(db.Integer, nullable=False, default=0)
@@ -27,6 +28,7 @@ class UploadProgress(db.Model):
             'upload_id': self.upload_id,
             'file_name': self.file_name,
             'file_path': self.file_path,
+            'channel': self.channel,
             'status': self.status,
             'total_rows': self.total_rows,
             'processed_rows': self.processed_rows,

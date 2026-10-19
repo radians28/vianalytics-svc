@@ -1,7 +1,9 @@
 import json
-from flask import Blueprint, request, current_app
+from flask import Blueprint, request
+from pydantic import ValidationError
 
-from app.blueprints.upload.service import upload, get_progress
+from app.blueprints.upload.requests.progress_request import ProgressPaginationRequest
+from app.blueprints.upload.service import UploadError, upload, get_progress
 from app.common.helpers import (
     success_response,
     error_response,
@@ -9,7 +11,7 @@ from app.common.helpers import (
 
 route = Blueprint('upload', __name__)
 
-ALLOWED_EXTENSIONS = {"xlsx", "xls"}
+ALLOWED_EXTENSIONS = {"xlsx", "xls", "csv"}
 
 def _allowed(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -34,19 +36,21 @@ def upload_file():
         metadata = json.loads(payload) if payload else {}
     except json.JSONDecodeError:
         return error_response("Invalid JSON payload in 'data' field", 400)
-    # TODO record the upload progress
-    upload(metadata, file)
-    return success_response({}, message="File uploaded successfully", code=201)
+    if not isinstance(metadata, dict):
+        return error_response("'data' field must be a JSON object", 400)
+
+    try:
+        result = upload(metadata, file)
+    except UploadError as err:
+        return error_response(err.message, err.code)
+    return success_response(result, message="File uploaded successfully", code=201)
 
 @route.post('/progress')
 def progress_track():
-    payload = request.get_json(silent=True) or {}
+    try:
+        request_body = ProgressPaginationRequest(**(request.get_json(silent=True) or {}))
+    except ValidationError:
+        return error_response("Request to get upload progress is not valid", 400)
 
-    results = get_progress(
-        filter=payload.get('filter', {}),
-        order=payload.get('order', {}),
-        page=payload.get('page', 1),
-        size=payload.get('size', 5)
-        )
-
+    results = get_progress(request_body)
     return success_response(results['records'], meta=results['meta'])
