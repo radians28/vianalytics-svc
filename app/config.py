@@ -35,6 +35,12 @@ class Config:
         os.path.join(os.getcwd(), "uploaded_files")
     )
 
+    # Airflow REST API used to start processing of uploaded files.
+    # Base URL includes the "/airflow" path prefix the api-server is served under.
+    AIRFLOW_API_URL = os.environ.get("AIRFLOW_API_URL", "http://localhost:8080/airflow")
+    AIRFLOW_USERNAME = os.environ.get("AIRFLOW_USERNAME", "admin")
+    AIRFLOW_PASSWORD = os.environ.get("AIRFLOW_PASSWORD", "")
+
     # Comma-separated list of origins allowed to call this API cross-origin,
     # e.g. "http://localhost:5173,https://app.vianalytics.com"
     CORS_ORIGINS = [

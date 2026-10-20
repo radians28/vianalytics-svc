@@ -10,3 +10,4 @@ email-validator
 pyjwt
 python-dotenv
 gunicorn
+requests
