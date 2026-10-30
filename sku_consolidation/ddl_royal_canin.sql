@@ -56,11 +56,15 @@ CREATE TABLE royal_canin.log_etl_run (
     channels                     text,
     source_files                 text,
     triggered_by                 text,
+    upload_id                    varchar(36),
     error_message                text,
     CONSTRAINT pk_log_etl_run PRIMARY KEY (run_id),
-    CONSTRAINT ck_log_etl_run_1 CHECK (status IN ('RUNNING','SUCCESS','FAILED'))
+    CONSTRAINT ck_log_etl_run_1 CHECK (status IN ('RUNNING','SUCCESS','FAILED')),
+    CONSTRAINT fk_log_etl_run_upload FOREIGN KEY (upload_id) REFERENCES public.upload_progress (upload_id) ON DELETE SET NULL
 );
+CREATE INDEX ix_log_etl_run_upload_id ON royal_canin.log_etl_run (upload_id);
 COMMENT ON TABLE royal_canin.log_etl_run IS '1 baris per eksekusi ETL';
+COMMENT ON COLUMN royal_canin.log_etl_run.upload_id IS 'file upload (public.upload_progress) yang diproses run ini; NULL untuk run batch/offline. Tabel upload_progress dibuat oleh migrasi vianalytics-svc, jadi jalankan migrasi itu sebelum DDL ini';
 COMMENT ON COLUMN royal_canin.log_etl_run.started_at IS 'timestamptz: instan waktu absolut; tampil dalam Asia/Jakarta (WIB) pada session TimeZone default';
 COMMENT ON COLUMN royal_canin.log_etl_run.finished_at IS 'timestamptz: instan waktu absolut; tampil dalam Asia/Jakarta (WIB) pada session TimeZone default';
 
