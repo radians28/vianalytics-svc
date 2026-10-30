@@ -11,11 +11,12 @@ a. every bundle code of the bundling master (a code with at least one component 
    is resolved to m_sku through m_sku_alias and flagged bundle_flag=true, sku_type='bundle'
 b. bundle / component codes unknown to the master are added as new SKUs
    (dq_flag='from_bundle_master', no first_order_at)
-c. m_sku_bundle: one row per (bundle sku, component) with qty, component_price (bundling_price.csv) and
-   price_ratio = price x qty / sum(price x qty) of the bundle (quantity ratio + dq_flag equal_split when no price)
-   Recursive PCS<->BOX pairs are resolved and bundle-in-bundle components flattened (common/bundle.py),
-   so m_sku_bundle only lists leaf components.
-   dq_flag: free_gift (price 0, component is a "B - ..." gimmick/sampling item), qty_missing (blank/0 -> 1), dup_component, flattened, nested_bundle (unresolved cycle), component_price_missing, price_gap
+c. m_sku_bundle: one row per (bundle sku, component) with qty, component_price (bundling_price.csv; a blank or
+   unlisted price is 0) and price_ratio = price x qty / sum(price x qty) of the bundle (quantity ratio + dq_flag
+   equal_split only when every component of the bundle is priced 0)
+   Recursive PCS<->BOX pairs are resolved and a bundle is broken down one level only (common/bundle.py): a
+   component that is a bundle itself is kept as that bundle SKU and not expanded further.
+   dq_flag: free_gift (price 0, component is a "B - ..." gimmick/sampling item), qty_missing (blank/0 -> 1), dup_component, nested_bundle (component is a bundle itself), component_price_missing (blank price -> 0), price_gap
 Re-running is safe: SKUs added earlier are found again through m_sku_alias.
 """
 import argparse
@@ -76,7 +77,8 @@ def main():
     prices = bundle.load_prices(a.bundle_dir)
     bom = bundle.load_master(a.bundle_dir)
     book = SkuBook(sku, alias)
-    bom["unit_price"], bom["free_gift"] = bundle.price_of(prices, bom["component_sku"], bom["component_name"])
+    bom["unit_price"], bom["free_gift"], bom["price_missing"] = bundle.price_of(prices, bom["component_sku"],
+                                                                                  bom["component_name"])
 
     rows, review, bundle_ids = [], list(bom.attrs.get("log", [])), {}
     for bsku, grp in bom.groupby("bundle_sku", sort=False):
@@ -95,7 +97,7 @@ def main():
             seq += 1
             price = c["unit_price"]
             flags = [f for f in c["notes"].split(",") if f]
-            if pd.isna(price):
+            if c["price_missing"]:
                 flags.append("component_price_missing")
             elif c["free_gift"]:
                 flags.append("free_gift")
@@ -105,10 +107,10 @@ def main():
                          "component_sku_code": cclean, "qty": int(c["qty"]),
                          "component_price": price, "dq_flag": ",".join(flags), "_bundle_code": bsku})
     sbundle = pd.DataFrame(rows)
-    # price ratio of each component inside its bundle = price x qty / sum(price x qty); quantity ratio when a
-    # price is missing or every price is 0 (flagged equal_split) - used by step 6 to split the order value
+    # price ratio of each component inside its bundle = price x qty / sum(price x qty) (blank price = 0); quantity
+    # ratio when every price is 0 (flagged equal_split) - used by step 6 to split the order value
     w = sbundle["component_price"] * sbundle["qty"]
-    ok = w.groupby(sbundle["bundle_sku_id"]).transform(lambda x: x.notna().all() and x.sum() > 0)
+    ok = w.groupby(sbundle["bundle_sku_id"]).transform("sum") > 0
     weight = w.where(ok, sbundle["qty"]).astype(float)
     sbundle["price_ratio"] = (weight / weight.groupby(sbundle["bundle_sku_id"]).transform("sum")).round(8)
     sbundle.loc[~ok, "dq_flag"] = sbundle.loc[~ok, "dq_flag"].map(lambda f: ",".join([x for x in f.split(",") if x] + ["equal_split"]))

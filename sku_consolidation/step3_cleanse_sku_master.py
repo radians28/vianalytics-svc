@@ -7,7 +7,10 @@ Output : sku_master/m_channel.csv, m_sku.csv, m_sku_alias.csv, m_platform_sku.cs
 Rules (same as the earlier 02_cleanse_sku_master.py)
   R1 standardise seller SKU (sku_clean: trim, upper-case, drop TKP_/TTS_/LZD_/SHP_/BLI_ prefix)
   R2 same listing (channel + marketplace SKU) sold under different seller SKUs = SKU change history
-  R3 identity resolution: all SKUs seen on one listing are one product (union-find, chains across channels)
+  R3 identity resolution: all SKUs seen on one listing are one product (union-find, chains across channels),
+     except a bundle and its own (first-level) component in the bundling master: the one with fewer order lines
+     on that listing stays a separate SKU, otherwise step 5 would lose the component
+     (dq_flag bundle_component_split in sku_dq_review; the listing's sku_id is its busiest SKU)
   R4 survivorship: master_sku = most recently introduced SKU of the cluster; name = most common name
   R5 DQ flags: missing_seller_sku, large_cluster, size_mismatch, low_name_similarity, sku_type_change
 IDs: sku_id / platform_sku_id are integers assigned in first-order order (stable for the same input).
@@ -19,8 +22,9 @@ import os
 
 import pandas as pd
 
+from common import bundle
 from common.config import CHANNELS, GMV2_DEDUP, SKU_MASTER, STG, TS_OUT, TZ_SUFFIX
-from common.parsers import fmt_ts, read_ts
+from common.parsers import clean_sku, fmt_ts, read_ts
 from common.skutils import DSU, similarity, size_mismatch, sku_type
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -34,6 +38,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--inp", default=os.path.join(STG, "stg_unique_sku.csv"))
     ap.add_argument("--out-dir", default=SKU_MASTER)
+    ap.add_argument("--bundle-dir", default=bundle.BUNDLE_DIR)
     a = ap.parse_args()
 
     df = pd.read_csv(a.inp, dtype=str, keep_default_na=False)
@@ -48,13 +53,30 @@ def main():
                                        "NOSKU::" + df["merchant"] + "::" + df["merchant_sku"])
 
     # ---- R3 identity resolution -------------------------------------------
-    dsu = DSU()
-    for _, nodes in df.groupby(["merchant", "merchant_sku"])["node"]:
-        nodes = nodes.unique()
-        dsu.find(nodes[0])
-        for n in nodes[1:]:
-            dsu.union(nodes[0], n)
+    bom = bundle.load_master(a.bundle_dir)
+    bom_pairs = {frozenset((clean_sku(b), clean_sku(c))) for b, c in zip(bom["bundle_sku"], bom["component_sku"])}
+    node_lines = df["order_line_count"].astype(int).groupby(df["node"]).sum()
+    dsu, split = DSU(), []
+    for (m, ms), nodes in df.groupby(["merchant", "merchant_sku"])["node"]:
+        nodes = list(nodes.unique())
+        # a bundle and its own component on one listing: the code with fewer order lines stays out of the merge
+        out = {min(x, y, key=lambda n: (node_lines[n], n)) for i, x in enumerate(nodes) for y in nodes[i + 1:]
+               if frozenset((x, y)) in bom_pairs}
+        for n in out:
+            split.append({"source": "m_sku", "dq_flag": "bundle_component_split", "master_sku": n,
+                          "product_name": "listing %s %s: kept apart from %s (bundle / component)"
+                                          % (m, ms, ",".join(x for x in nodes if frozenset((x, n)) in bom_pairs))})
+        keep = [n for n in nodes if n not in out] or nodes[:1]
+        for n in nodes:
+            dsu.find(n)
+        for n in keep[1:]:
+            dsu.union(keep[0], n)
     df["cluster"] = df["node"].map(dsu.find)
+    seen = set(df["node"])
+    merged = [tuple(p) for p in bom_pairs if len(p) == 2 and p <= seen and len({dsu.find(x) for x in p}) == 1]
+    if merged:
+        log.warning("bundle and component still in one SKU through other listings: %s", merged)
+    log.info("bundle/component links kept apart: %d", len(split))
 
     # ---- R4 survivorship ---------------------------------------------------
     alias = (df.groupby(["cluster", "node"])
@@ -103,10 +125,14 @@ def main():
 
     # ---- m_platform_sku ----------------------------------------------------
     df = df.sort_values("first_order_date", kind="stable")
+    busiest = (df.assign(n=df["order_line_count"].astype(int)).groupby(["merchant", "merchant_sku", "sku_id"])["n"]
+                 .sum().reset_index().sort_values("n", ascending=False, kind="stable")
+                 .drop_duplicates(["merchant", "merchant_sku"]).set_index(["merchant", "merchant_sku"])["sku_id"])
     plat = (df.groupby(["merchant", "merchant_sku"], sort=False)
-              .agg(sku_id=("sku_id", "first"), first_order_at=("first_order_date", "min"),
+              .agg(first_order_at=("first_order_date", "min"),
                    current_seller_sku=("seller_sku", "last"), current_clean=("sku_clean", "last"),
                    product_name=("product_name", "last")).reset_index())
+    plat["sku_id"] = [busiest[k] for k in zip(plat["merchant"], plat["merchant_sku"])]
     plat["master_sku"] = plat["sku_id"].map(master.set_index("sku_id")["master_sku"])
     plat["is_on_master_sku"] = plat["current_clean"] == plat["master_sku"]
     plat = plat.sort_values(["first_order_at", "merchant", "merchant_sku"], kind="stable").reset_index(drop=True)
@@ -146,6 +172,7 @@ def main():
         master[master["dq_flag"] != ""].assign(source="m_sku")[["source", "dq_flag", "sku_id", "master_sku", "product_name"]],
         hist[hist["dq_flag"] != ""].assign(source="m_sku_history").rename(columns={"_new_name": "product_name"})[
             ["source", "dq_flag", "sku_id", "platform_sku_id", "old_seller_sku", "new_seller_sku", "_old_name", "product_name", "_sim"]],
+        pd.DataFrame(split, columns=["source", "dq_flag", "master_sku", "product_name"]),
     ], ignore_index=True).rename(columns={"_old_name": "old_product_name", "_sim": "name_similarity"})
 
     # ---- write -------------------------------------------------------------

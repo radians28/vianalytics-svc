@@ -44,9 +44,10 @@ def resolve(lines, channel, ms):
     cid = CHANNELS[channel]["channel_id"]
     pl = ms.platform[ms.platform["channel_id"] == cid].set_index("merchant_sku")
     lines["platform_sku_id"] = lines["platform_sku"].map(pl["platform_sku_id"])
-    lines["sku_id"] = lines["platform_sku"].map(pl["sku_id"])
+    # seller SKU first: a listing normally maps all its seller SKUs to one sku_id, except a bundle and its own
+    # component kept apart by step 3; the listing's sku_id covers lines without a known seller SKU
     alias_id = lines["seller_sku"].map(lambda s: clean_sku(s)).map(ms.alias.set_index("sku_code")["sku_id"])
-    lines["sku_id"] = lines["sku_id"].fillna(alias_id)
+    lines["sku_id"] = alias_id.fillna(lines["platform_sku"].map(pl["sku_id"]))
     miss = lines["sku_id"].isna().sum()
     if miss:
         log.warning("%s: %d lines could not be resolved to a SKU", channel, miss)

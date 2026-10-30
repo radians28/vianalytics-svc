@@ -2,7 +2,6 @@
 import os
 import re
 
-import numpy as np
 import pandas as pd
 
 from .config import RAW
@@ -20,9 +19,9 @@ FREE_GIFT = re.compile(r"^37/B\d|(^|[\s\]])B - ")
 
 
 def load_prices(bundle_dir=BUNDLE_DIR):
-    """SKU -> (name, price, free_gift). A blank price stays NaN, except for free gifts (code 37/B..., i.e.
-    the "B - ..." gimmick / sampling / box items): they are not sold, so their price is set to 0 and the whole
-    bundle value goes to the other components."""
+    """SKU -> (name, price, free_gift). A blank price stays NaN here (price_of turns it into 0), except for free
+    gifts (code 37/B..., i.e. the "B - ..." gimmick / sampling / box items): they are not sold, so their price is
+    set to 0 and the whole bundle value goes to the other components."""
     p = _read(os.path.join(bundle_dir, "bundling_price.csv"))
     p["price"] = pd.to_numeric(p["Price"].replace("", pd.NA), errors="coerce")
     p = p.rename(columns={"SKU": "sku", "Name": "name"})[["sku", "name", "price"]]
@@ -32,24 +31,25 @@ def load_prices(bundle_dir=BUNDLE_DIR):
 
 
 def price_of(prices, skus, names):
-    """(price, free_gift) per SKU. Listed prices win; a SKU that is blank in the price file or absent from it is a
-    free gift (price 0) when its code is 37/B... or its name starts with "B - "; otherwise the price is NaN."""
+    """(price, free_gift, price_missing) per SKU. Listed prices win; a SKU that is blank in the price file or absent
+    from it gets price 0: as a free gift when its code is 37/B... or its name starts with "B - ", otherwise flagged
+    price_missing."""
     skus, names = pd.Series(skus).reset_index(drop=True), pd.Series(names).reset_index(drop=True)
     price = skus.map(prices["price"])
     gift = skus.map(prices["free_gift"].astype(bool)).astype("boolean").fillna(False).astype(bool)
     gift |= price.isna() & (skus.str.match(r"^37/B\d") | names.str.contains(r"(?:^|[\s\]])B - ", regex=True, na=False))
-    price = price.mask(gift & price.isna(), 0.0)
-    return price.values, gift.values
+    missing = price.isna() & ~gift
+    return price.fillna(0.0).values, gift.values, missing.values
 
 
 def load_master(bundle_dir=BUNDLE_DIR):
     """One row per (bundle, leaf component) for TRUE bundles only (a row whose base is the SKU itself,
     i.e. a plain SKU listed in the master, is not a bundle).
-    Recursive PCS<->BOX pairs are resolved and bundle-in-bundle components are flattened (see below);
-    `df.attrs["log"]` lists those actions as dicts (bundle_sku, dq_flag, detail).
+    Recursive PCS<->BOX pairs are resolved; a bundle is broken down one level only (a component that is a
+    bundle itself stays as it is). `df.attrs["log"]` lists those actions as dicts (bundle_sku, dq_flag, detail).
 
     Columns: bundle_sku, bundle_name, component_seq, component_sku, component_name,
-             qty (>0, blank/0 -> 1), notes (comma list: qty_missing, dup_component, flattened, nested_bundle=unresolved cycle)
+             qty (>0, blank/0 -> 1), notes (comma list: qty_missing, dup_component, nested_bundle=component is a bundle itself)
     """
     m = _read(os.path.join(bundle_dir, "bundling_master.csv")).rename(columns={
         "Kode SKU": "bundle_sku", "Nama SKU": "bundle_name", "Kode SKU BASE": "component_sku",
@@ -66,7 +66,7 @@ def load_master(bundle_dir=BUNDLE_DIR):
                   dup_component=("dup_component", "any")).reset_index())
     agg["notes"] = [",".join(n for n, f in (("qty_missing", a), ("dup_component", b)) if f)
                     for a, b in zip(agg["qty_missing"], agg["dup_component"])]
-    return _flatten(_resolve_recursive(agg))
+    return _first_level(_resolve_recursive(agg))
 
 
 def _resolve_recursive(agg):
@@ -94,43 +94,18 @@ def _resolve_recursive(agg):
     return out
 
 
-def _flatten(agg):
-    """Expand components that are bundles themselves until only leaf components remain (qty multiplied,
-    duplicate leaves summed). Cycles that could not be resolved are left as they are."""
+def _first_level(agg):
+    """Break each bundle down one level only: a component that is a bundle itself is kept as it is (flagged
+    nested_bundle) and is not expanded any further."""
     log = list(agg.attrs.get("log", []))
-    boms, names = {}, {}
-    for r in agg.itertuples():
-        boms.setdefault(r.bundle_sku, []).append((r.component_sku, r.qty, r.notes))
-        names.setdefault(r.bundle_sku, r.bundle_name)
-        names.setdefault(r.component_sku, r.component_name)
-
-    def leaves(sku, stack):
-        out = {}                                       # leaf -> [qty, notes set]
-        for comp, qty, notes in boms[sku]:
-            nn = {x for x in notes.split(",") if x}
-            if comp in boms and comp not in stack:
-                for leaf, (lq, ln) in leaves(comp, stack + (comp,)).items():
-                    o = out.setdefault(leaf, [0, set()])
-                    o[0] += qty * lq
-                    o[1] |= nn | ln | {"flattened"}
-            else:
-                o = out.setdefault(comp, [0, set()])
-                o[0] += qty
-                o[1] |= nn
-        return out
-
-    rows = []
-    for b in boms:
-        flat = leaves(b, (b,))
-        if any("flattened" in n for _, n in flat.values()):
-            log.append({"bundle_sku": b, "dq_flag": "flattened",
-                        "detail": "components expanded to " + ",".join(flat)})
-        for seq, (leaf, (q, nn)) in enumerate(flat.items(), 1):
-            if leaf in boms:        # unresolved cycle
-                nn.add("nested_bundle")
-            rows.append({"bundle_sku": b, "bundle_name": names[b], "component_seq": seq,
-                         "component_sku": leaf, "component_name": names[leaf], "qty": int(q),
-                         "notes": ",".join(sorted(nn))})
-    out = pd.DataFrame(rows)
+    bundles = set(agg["bundle_sku"])
+    out = agg.copy()
+    out["component_seq"] = out.groupby("bundle_sku", sort=False).cumcount() + 1
+    nested = out["component_sku"].isin(bundles)
+    out.loc[nested, "notes"] = [",".join(sorted({x for x in n.split(",") if x} | {"nested_bundle"}))
+                                for n in out.loc[nested, "notes"]]
+    for b, c in zip(out.loc[nested, "bundle_sku"], out.loc[nested, "component_sku"]):
+        log.append({"bundle_sku": b, "dq_flag": "nested_bundle", "detail": "component %s is a bundle (not broken down)" % c})
+    out = out[["bundle_sku", "bundle_name", "component_seq", "component_sku", "component_name", "qty", "notes"]]
     out.attrs["log"] = log
     return out
