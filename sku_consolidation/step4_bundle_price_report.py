@@ -48,7 +48,7 @@ WIDTH = [16, 44, 15, 16, 44, 14, 6, 15, 24, 16, 14, 9, 22, 12, 14, 16, 70]
 
 def analyse(master, prices, threshold, tol):
     chk, comp = build_check(master, prices, threshold)
-    _, gift_c = bundle.price_of(prices, comp["component_sku"], comp["component_name"])
+    _, gift_c, _ = bundle.price_of(prices, comp["component_sku"], comp["component_name"])
     comp["free_gift"] = gift_c
     chk = chk.set_index("bundle_sku")
     out = {}
@@ -60,7 +60,7 @@ def analyse(master, prices, threshold, tol):
         if gap:
             for _, x in c.iterrows():
                 u = x["unit_price"]
-                if pd.isna(u) or u <= 0:
+                if x["price_missing"] or u <= 0:
                     continue
                 if x["qty"] == 1 and abs(bp - u) <= tol * u:                                  # (1) price of one component
                     flags["a"].append(x["component_sku"])
@@ -138,18 +138,18 @@ def write_sheet(ws, bundles, comp, info, title, count_label):
                 cell.fill = FILL(tint)
         for j, (_, x) in enumerate(rows.iterrows()):
             r = first + j
-            price = None if pd.isna(x["unit_price"]) else float(x["unit_price"])
-            note = ("Gratis (hadiah)" if x["free_gift"] else "Harga kosong" if price is None else "")
-            if "flattened" in str(x["notes"]):
-                note = (note + "; " if note else "") + "Hasil penguraian bundle bersarang"
+            price = float(x["unit_price"])
+            note = ("Gratis (hadiah)" if x["free_gift"] else "Harga kosong (dihitung 0)" if x["price_missing"] else "")
+            if "nested_bundle" in str(x["notes"]):
+                note = (note + "; " if note else "") + "Komponen ini juga bundle (tidak diuraikan lebih lanjut)"
             for k, v in enumerate([x["component_sku"], x["component_name"], price, int(x["qty"]),
-                                   None if price is None else price * int(x["qty"]), note]):
+                                   price * int(x["qty"]), note]):
                 c = ws.cell(r, 4 + k, v)
                 c.font, c.border = base, BORDER
                 c.alignment = Alignment(vertical="top", wrap_text=k in (1, 5))
                 if k in (2, 4):
                     c.number_format = "#,##0"
-            if price is None:
+            if x["price_missing"]:
                 for k in range(3, 9):
                     ws.cell(r, k + 1).fill = FILL("FFEB9C")
             if x["component_sku"] in i["hit"]:
@@ -217,7 +217,7 @@ def main():
     text = [
         ("Bagian laporan", True),
         ("1. INFO BUNDLE: kode SKU, nama produk, dan harga bundle dari file bundling price.", False),
-        ("2. KOMPONEN: satu baris per komponen (hasil penguraian bundle bersarang): harga dasar, qty, total = harga dasar × qty.", False),
+        ("2. KOMPONEN: satu baris per komponen (bundle diuraikan satu tingkat saja; komponen yang juga bundle tidak diuraikan lagi): harga dasar, qty, total = harga dasar × qty.", False),
         ("3. KEMUNGKINAN KETIDAKSESUAIAN: total komponen, selisih, status, dan tiga kondisi di bawah.", False),
         ("", False),
         ("Kondisi", True),
@@ -228,6 +228,7 @@ def main():
         ("", False),
         ("Catatan", True),
         ("Komponen kode 37/B… / nama berawalan 'B - ' (gimmick, sampling, box) dianggap hadiah gratis dengan harga 0.", False),
+        ("Harga kosong dihitung 0 pada total komponen.", False),
         ("Baris komponen berwarna merah muda = komponen yang menyerupai harga bundle; kuning = harga kosong.", False),
         ("Bundle satu komponen dengan selisih (konversi PCS↔BOX) dan bundle hadiah ditandai 'Lolos (dikecualikan)'.", False),
     ]
