@@ -125,9 +125,50 @@ def main():
         k.cell(r, 1, t).font = Font(name="Arial", bold=bold, size=11 if bold else 10)
     k.column_dimensions["A"].width = 130
     k.sheet_view.showGridLines = False
+    _match_sheet(wb)
     out = os.path.join(SKU_MASTER, "konfirmasi_sales_bundling.xlsx")
     wb.save(out)
     print("ditulis", out)
+
+
+MATCH_COLS = [("bundle_sku", "Kode SKU Bundle", 16), ("bundle_name", "Nama Bundle", 46),
+              ("matched_sku", "SKU Lama (Staging)", 24), ("matched_name", "Nama Produk Staging", 46),
+              ("matched_marketplace", "Marketplace", 14), ("stg_seller_skus", "Seller SKU Staging", 30),
+              ("stg_marketplace_skus", "ID SKU Marketplace", 28), ("stg_variations", "Variasi", 24),
+              ("stg_order_line_count", "Jumlah Baris Order", 10), ("stg_first_order_at", "Order Pertama", 22),
+              ("stg_last_order_at", "Order Terakhir", 22), ("distance", "Jarak", 8), ("score", "Skor", 8),
+              ("within_threshold", "Dalam Ambang (<=0,45)", 12), ("dbscan_cluster_bundle", "Cluster Bundle", 10),
+              ("dbscan_cluster_match", "Cluster Staging", 10), ("dbscan_fit", "DBSCAN Cocok", 10)]
+
+
+def _match_sheet(wb):
+    """Sheet 'Match SKU Lama': bundle_sku_name_match.csv (bundle SKUs absent from staging -> closest staging SKU)."""
+    path = os.path.join(SKU_MASTER, "bundle_sku_name_match.csv")
+    if not os.path.exists(path):
+        return
+    d = pd.read_csv(path, dtype=str, keep_default_na=False)
+    # same staging name together (duplicates can be picked directly), best score first within a name
+    d = (d.assign(_n=d.matched_name.str.lower(), _s=pd.to_numeric(d.score))
+           .sort_values(["_n", "_s", "bundle_sku"], ascending=[True, False, True], kind="stable")
+           .drop(columns=["_n", "_s"]))
+    ws = wb.create_sheet("Match SKU Lama")
+    for j, (_, name, w) in enumerate(MATCH_COLS, 1):
+        h = ws.cell(1, j, name)
+        h.font, h.border = Font(name="Arial", bold=True, color="FFFFFF"), BORDER
+        h.fill = PatternFill("solid", start_color="375623")
+        h.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws.column_dimensions[get_column_letter(j)].width = w
+    num = {"stg_order_line_count", "distance", "score", "dbscan_cluster_bundle", "dbscan_cluster_match"}
+    for i, rec in enumerate(d.to_dict("records"), 2):
+        for j, (key, _, _) in enumerate(MATCH_COLS, 1):
+            v = rec[key]
+            v = float(v) if key in num and v != "" else v
+            c = ws.cell(i, j, v)
+            c.font, c.border = FONT, BORDER
+    ws.row_dimensions[1].height = 32
+    ws.freeze_panes = "C2"
+    ws.auto_filter.ref = "A1:%s%d" % (get_column_letter(len(MATCH_COLS)), len(d) + 1)
+    ws.sheet_view.showGridLines = False
 
 
 def _merge(ws, r1, r2, c, v, align, fmt):

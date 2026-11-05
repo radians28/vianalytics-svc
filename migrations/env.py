@@ -51,6 +51,17 @@ def get_metadata():
     return target_db.metadata
 
 
+# Schemas managed by these migrations: the default one plus the data warehouse.
+MANAGED_SCHEMAS = (None, 'public', 'royal_canin')
+
+
+def include_object(obj, name, type_, reflected, compare_to):
+    """Autogenerate only looks at our schemas; views (dm_traffic) are created by hand in a revision."""
+    if type_ == 'table':
+        return obj.schema in MANAGED_SCHEMAS
+    return True
+
+
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
 
@@ -65,7 +76,8 @@ def run_migrations_offline():
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url, target_metadata=get_metadata(), literal_binds=True
+        url=url, target_metadata=get_metadata(), literal_binds=True,
+        include_schemas=True, include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -100,6 +112,8 @@ def run_migrations_online():
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
+            include_schemas=True,
+            include_object=include_object,
             **conf_args
         )
 
