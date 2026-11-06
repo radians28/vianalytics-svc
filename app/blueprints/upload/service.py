@@ -137,6 +137,19 @@ def _fifo_orders(upload_ids: list[str]) -> dict[str, int]:
     return {upload_id: position for upload_id, position in rows}
 
 
+def _records_summary(r: UploadProgress) -> str:
+    """Paused: what the SKU review still needs (written by the DAG and the review API)."""
+    if r.status != 'Paused':
+        return ''
+    meta = r.meta_data or {}
+    if meta.get('resume_error'):
+        return 'SKUs resolved · ETL resume pending'
+    pending = meta.get('sku_review_pending') or 0
+    if pending:
+        return f"{pending} SKU{'s' if pending != 1 else ''} need review"
+    return ''
+
+
 def get_progress(request_body: ProgressPaginationRequest) -> dict:
     statements = select(UploadProgress)
 
@@ -186,8 +199,8 @@ def get_progress(request_body: ProgressPaginationRequest) -> dict:
             'fileName': r.file_name,
             'marketplace': CHANNEL_MARKETPLACES.get(r.channel, (r.channel,))[0],
             'size': _format_size((r.meta_data or {}).get('size')),
-            # TODO fill from the processing results once the DAG reports them
-            'recordsSummary': '',
+            # TODO fill for other statuses once the DAG reports its results
+            'recordsSummary': _records_summary(r),
             'status': r.status,
             'statusDetail': '',
             'timestamp': r.created_at,
