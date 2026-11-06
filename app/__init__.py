@@ -51,6 +51,9 @@ def create_app(config_class=Config):
     from app.blueprints.team.routes import route as user_bp
     app.register_blueprint(user_bp, url_prefix="/api/user")
 
+    from app.blueprints.sku_master.routes import route as sku_master_bp
+    app.register_blueprint(sku_master_bp, url_prefix="/api/sku-master")
+
     @app.errorhandler(HTTPException)
     def handle_http_exception(err):
         response = {
