@@ -161,6 +161,8 @@ def _records_summary(r: UploadProgress) -> str:
         return ''
     if meta.get('resume_error'):
         return 'SKUs resolved · ETL resume pending'
+    if meta.get('resume_needed'):
+        return 'SKUs resolved in another upload · resume needed'
     pending = meta.get('sku_review_pending') or 0
     if pending:
         return f"{pending} SKU{'s' if pending != 1 else ''} need review"
