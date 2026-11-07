@@ -1,7 +1,8 @@
 import os
+from datetime import datetime
 
 from flask import current_app
-from sqlalchemy import asc, case, desc, func, select
+from sqlalchemy import asc, case, desc, func, literal, select
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
@@ -26,6 +27,9 @@ CHANNEL_MARKETPLACES = {
     'tiktok_tokped': ('TikTok Shop', 'Tokopedia'),
     'lazada': ('Lazada',),
     'blibli': ('Blibli',),
+    # traffic exports are per platform (upload/traffic.py)
+    'tiktok': ('TikTok Shop',),
+    'tokopedia': ('Tokopedia',),
 }
 
 STATUS_PRIORITY = {'Processing': 1, 'Paused': 2, 'Queued': 3, 'Completed': 4, 'Failed': 5}
@@ -47,6 +51,7 @@ def upload(metadata: dict, file: FileStorage) -> dict:
             f"Invalid channel. Allowed channels: {', '.join(sorted(SUPPORTED_CHANNELS))}"
         )
 
+    metadata = {**metadata, 'upload_type': 'order'}
     upload_id = gen_uuid()
     original_name = file.filename or ''
     extension = original_name.rsplit('.', 1)[1].lower()
@@ -137,11 +142,23 @@ def _fifo_orders(upload_ids: list[str]) -> dict[str, int]:
     return {upload_id: position for upload_id, position in rows}
 
 
+def _upload_type():
+    """meta_data.upload_type; order uploads written before it existed have none."""
+    return func.coalesce(UploadProgress.meta_data.op('->>')(literal('upload_type')), 'order')
+
+
 def _records_summary(r: UploadProgress) -> str:
-    """Paused: what the SKU review still needs (written by the DAG and the review API)."""
+    """Traffic: the days loaded. Paused: what the SKU review still needs (written by the DAG and the
+    review API)."""
+    meta = r.meta_data or {}
+    if meta.get('upload_type') == 'traffic':
+        if r.status != 'Completed' or not meta.get('days'):
+            return r.error_message or ''
+        start, end = (datetime.fromisoformat(meta[k]) for k in ('period_start', 'period_end'))
+        changes = f" · {meta.get('inserted', 0)} new, {meta.get('updated', 0)} updated"
+        return f"{meta['days']} days · {start:%d %b %Y} – {end:%d %b %Y}{changes}"
     if r.status != 'Paused':
         return ''
-    meta = r.meta_data or {}
     if meta.get('resume_error'):
         return 'SKUs resolved · ETL resume pending'
     pending = meta.get('sku_review_pending') or 0
@@ -151,7 +168,7 @@ def _records_summary(r: UploadProgress) -> str:
 
 
 def get_progress(request_body: ProgressPaginationRequest) -> dict:
-    statements = select(UploadProgress)
+    statements = select(UploadProgress).where(_upload_type() == request_body.type)
 
     if request_body.filter:
         for key, value in request_body.filter.items():

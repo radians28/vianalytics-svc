@@ -395,15 +395,17 @@ class StgSkuBundle(db.Model):
         sa.PrimaryKeyConstraint('stg_id', name='pk_stg_sku_bundle'),
         sa.ForeignKeyConstraint(['load_run_id'], ['royal_canin.log_etl_run.run_id'], name='fk_stg_sku_bundle_load_run'),
         sa.Index('ix_stg_sku_bundle_load_run_id', 'load_run_id'),
-        {'schema': SCHEMA, 'comment': 'as-is: Detail SKU Bundle Royal Canin.xlsx · TRUNCATE → INSERT per run'},
+        {'schema': SCHEMA, 'comment': 'as-is: file upload SKU bundling (svc /api/sku-master/bundles/upload) · INSERT per run'},
     )
 
     stg_id = db.Column(sa.BigInteger(), sa.Identity(always=False))
     sku_bundle = db.Column(sa.Text(), comment='header asli: SKU Bundle ')
     product_name_bundle = db.Column(sa.Text(), comment='header asli: Product Name Bundle')
+    line_no = db.Column(sa.Text(), comment='header asli: Line No')
     sku = db.Column(sa.Text(), comment='header asli: SKU')
     product_name = db.Column(sa.Text(), comment='header asli: Product Name')
     qty = db.Column(sa.Text(), comment='header asli: qty')
+    unit_price = db.Column(sa.Text(), comment='header asli: Unit Price')
     source_file = db.Column(sa.Text())
     source_row_no = db.Column(sa.Integer())
     load_run_id = db.Column(sa.BigInteger(), nullable=False)
