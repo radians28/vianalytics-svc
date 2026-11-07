@@ -1,8 +1,11 @@
-from flask import Blueprint, request
+import json
+
+from flask import Blueprint, g, request
 from pydantic import ValidationError
 
-from app.blueprints.sku_master.requests.list_request import SkuMasterPaginationRequest
-from app.blueprints.sku_master.service import get_history, get_platforms, get_skus, search_skus
+from app.blueprints.sku_master.requests.list_request import SkuBundlePaginationRequest, SkuMasterPaginationRequest
+from app.blueprints.sku_master.service import get_bundles, get_history, get_platforms, get_skus, search_skus
+from app.blueprints.sku_master import bundle_upload
 from app.common.helpers import success_response, error_response
 
 
@@ -19,6 +22,44 @@ def get_sku_list():
 
     results = get_skus(request_body)
     return success_response(results['records'], meta=results['meta'])
+
+
+@route.post('/bundles')
+def get_bundle_list():
+    try:
+        request_body = SkuBundlePaginationRequest(**(request.get_json(silent=True) or {}))
+    except ValidationError:
+        return error_response("Request to get SKU bundles is not valid", 400)
+
+    results = get_bundles(request_body)
+    return success_response(results['records'], meta=results['meta'])
+
+
+@route.post('/bundles/upload')
+def upload_bundles():
+    """SKU bundling file: mode 'preview' validates and reports, 'apply' replaces the bundles in the file."""
+    file = request.files.get('file')
+    if file is None or not file.filename:
+        return error_response("No file selected", 400)
+    if file.filename.rsplit('.', 1)[-1].lower() not in {'xlsx', 'xls', 'csv'}:
+        return error_response("Unsupported file type. Allowed types: csv, xls, xlsx", 400)
+    try:
+        metadata = json.loads(request.form.get('data') or '{}')
+    except json.JSONDecodeError:
+        return error_response("Invalid JSON payload in 'data' field", 400)
+    mode = (metadata.get('mode') if isinstance(metadata, dict) else None) or 'preview'
+    if mode not in ('preview', 'apply'):
+        return error_response("mode must be 'preview' or 'apply'", 400)
+
+    data = file.read()
+    try:
+        if mode == 'preview':
+            return success_response(bundle_upload.preview(data))
+        user = g.user.get('user_email') or g.user.get('user_id')
+        result = bundle_upload.apply(data, file.filename, user)
+    except bundle_upload.BundleUploadError as err:
+        return error_response(err.message, err.code, errors=err.errors or None)
+    return success_response(result, message=f"{result['bundles']} bundle(s) saved", code=201)
 
 
 @route.get('/search')

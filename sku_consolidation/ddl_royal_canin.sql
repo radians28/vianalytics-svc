@@ -771,6 +771,8 @@ CREATE TABLE royal_canin.stg_sku_bundle (
     sku                            text,
     product_name                   text,
     qty                            text,
+    line_no                        text,
+    unit_price                     text,
     source_file   text,
     source_row_no integer,
     load_run_id   bigint NOT NULL,
@@ -779,12 +781,14 @@ CREATE TABLE royal_canin.stg_sku_bundle (
     CONSTRAINT fk_stg_sku_bundle_load_run FOREIGN KEY (load_run_id) REFERENCES royal_canin.log_etl_run (run_id)
 );
 CREATE INDEX ix_stg_sku_bundle_load_run_id ON royal_canin.stg_sku_bundle (load_run_id);
-COMMENT ON TABLE royal_canin.stg_sku_bundle IS 'as-is: Detail SKU Bundle Royal Canin.xlsx · TRUNCATE → INSERT per run';
+COMMENT ON TABLE royal_canin.stg_sku_bundle IS 'as-is: file upload SKU bundling (svc /api/sku-master/bundles/upload) · INSERT per run';
 COMMENT ON COLUMN royal_canin.stg_sku_bundle.sku_bundle IS 'header asli: SKU Bundle ';
 COMMENT ON COLUMN royal_canin.stg_sku_bundle.product_name_bundle IS 'header asli: Product Name Bundle';
 COMMENT ON COLUMN royal_canin.stg_sku_bundle.sku IS 'header asli: SKU';
 COMMENT ON COLUMN royal_canin.stg_sku_bundle.product_name IS 'header asli: Product Name';
 COMMENT ON COLUMN royal_canin.stg_sku_bundle.qty IS 'header asli: qty';
+COMMENT ON COLUMN royal_canin.stg_sku_bundle.line_no IS 'header asli: Line No';
+COMMENT ON COLUMN royal_canin.stg_sku_bundle.unit_price IS 'header asli: Unit Price';
 COMMENT ON COLUMN royal_canin.stg_sku_bundle.loaded_at IS 'timestamptz: instan waktu absolut; tampil dalam Asia/Jakarta (WIB) pada session TimeZone default';
 
 CREATE TABLE royal_canin.stg_traffic (

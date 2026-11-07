@@ -2,7 +2,7 @@
 
 process_sku_{channel} writes a listing whose seller SKU and platform SKU are both unknown, but
 whose name is close to an existing SKU, to royal_canin.log_sku_match as PENDING. Its order lines
-wait, and the upload ends Paused. Here an admin decides for every PENDING listing of the upload:
+wait, and the upload ends Paused. Here a user decides for every PENDING listing of the upload:
 
 - map:    the listing belongs to an existing SKU (a suggested candidate or any other SKU)
 - create: the listing is a new product -> new m_sku
@@ -30,6 +30,7 @@ from sqlalchemy import text
 
 from app.blueprints.upload.requests.sku_review_request import SkuDecision, SkuReviewResolveRequest
 from app.blueprints.upload.service import CHANNEL_MARKETPLACES
+from app.blueprints.sku_master.master_writes import SKU_LOCK_KEY, alias_owner, insert_sku, next_id
 from app.blueprints.upload.sku_rules import sku_type
 from app.common.airflow_client import trigger_dag
 from app.common.helpers import jakarta_now
@@ -39,8 +40,6 @@ from app.models.royal_canin import SCHEMA
 
 # DAG that loads the order lines of the resolved listings (not built yet)
 CONTINUE_DAG_ID = 'handle_continue_order_data_{channel}'
-# pg_advisory_xact_lock key of SKU master writes; same as LOCK_KEY in airflow/dags/sku/process.py
-SKU_LOCK_KEY = 0x534B55
 
 logger = get_logger(__name__)
 
@@ -143,9 +142,6 @@ def get_review(upload_id: str) -> dict:
 
 # -------------------------------------------------------------------------------- master writes
 
-def _next_id(table: str, column: str) -> int:
-    # max + 1 under the advisory lock, the id scheme of the process_sku DAG (Master.new_id)
-    return _q(f'SELECT coalesce(max({column}), 0) + 1 FROM {{S}}.{table}').scalar_one()
 
 
 def _sku(sku_id: int):
@@ -154,31 +150,17 @@ def _sku(sku_id: int):
     """, id=sku_id).mappings().first()
 
 
-def _alias_owner(code: str) -> int | None:
-    return _q('SELECT sku_id FROM {S}.m_sku_alias WHERE sku_code = :code', code=code).scalar()
 
 
 def _create_sku(match, product_name: str | None) -> dict:
     """create_sku: a new SKU master for the listing; its seller SKU becomes the master code."""
     code = match['sku_code'] or None
-    if code and _alias_owner(code) is not None:
+    if code and alias_owner(code) is not None:
         raise SkuReviewError(f"Seller SKU {code} already belongs to another SKU; map the listing instead", 409)
-    sku_id = _next_id('m_sku', 'sku_id')
-    master_code = 'SKU-{:05d}'.format(sku_id)
     name = product_name or match['product_name'] or match['seller_sku'] or match['merchant_sku']
-    _q("""
-        INSERT INTO {S}.m_sku (sku_id, sku_master_code, master_sku, product_name, sku_type,
-                               bundle_flag, first_order_at, dq_flag)
-        VALUES (:id, :code, :master, :name, :type, false, :at, :dq)
-    """, id=sku_id, code=master_code, master=code, name=name,
-       type=sku_type(code, name) if code else 'unknown', at=match['first_order_at'],
-       dq='name_unmatched' if code else 'missing_seller_sku,name_unmatched')
-    if code:
-        _q("""
-            INSERT INTO {S}.m_sku_alias (sku_code, sku_id, is_master_code, first_seen_at)
-            VALUES (:code, :id, true, :at)
-        """, code=code, id=sku_id, at=match['first_order_at'])
-    return {'sku_id': sku_id, 'sku_master_code': master_code, 'master_sku': code, 'product_name': name}
+    return insert_sku(code, name, sku_type(code, name) if code else 'unknown',
+                      'name_unmatched' if code else 'missing_seller_sku,name_unmatched',
+                      first_order_at=match['first_order_at'])
 
 
 def _link_listing(match, sku: dict):
@@ -196,7 +178,7 @@ def _link_listing(match, sku: dict):
         raise SkuReviewError(
             f"Listing {match['merchant_sku']} already belongs to {listing['sku_master_code']}", 409)
     if code:
-        owner = _alias_owner(code)
+        owner = alias_owner(code)
         if owner is not None and owner != sku_id:
             other = _q('SELECT sku_master_code FROM {S}.m_sku WHERE sku_id = :id', id=owner).scalar()
             raise SkuReviewError(f'Seller SKU {code} already belongs to {other}', 409)
@@ -206,11 +188,11 @@ def _link_listing(match, sku: dict):
             INSERT INTO {S}.m_platform_sku (platform_sku_id, channel_id, merchant_sku, sku_id,
                 current_seller_sku, product_name, is_on_master_sku, first_order_at)
             VALUES (:pid, :ch, :ms, :sku, :seller, :name, :on_master, :at)
-        """, pid=_next_id('m_platform_sku', 'platform_sku_id'), ch=match['channel_id'],
+        """, pid=next_id('m_platform_sku', 'platform_sku_id'), ch=match['channel_id'],
            ms=match['merchant_sku'], sku=sku_id, seller=match['seller_sku'], name=match['product_name'],
            on_master=code is not None and code == sku['master_sku'], at=match['first_order_at'])
 
-    if code and _alias_owner(code) is None:                 # add_alias, without promote_master_code
+    if code and alias_owner(code) is None:                 # add_alias, without promote_master_code
         _q("""
             INSERT INTO {S}.m_sku_alias (sku_code, sku_id, is_master_code, first_seen_at)
             VALUES (:code, :id, false, :at)

@@ -1,54 +1,26 @@
 from flask import abort
 from sqlalchemy import asc, desc, exists, func, or_, select, text
 
-from app.blueprints.sku_master.requests.list_request import SkuMasterPaginationRequest
+from sqlalchemy.orm import aliased
+
+from app.blueprints.sku_master.requests.list_request import SkuBundlePaginationRequest, SkuMasterPaginationRequest
 from app.common.pagination_request import SortOrder
 from app.extensions import db
 from app.models.royal_canin import SCHEMA
-from app.models.royal_canin.master import MChannel, MPlatformSku, MSku, MSkuAlias
+from app.models.royal_canin.master import MChannel, MPlatformSku, MSku, MSkuAlias, MSkuBundle
 
 
 def get_skus(request_body: SkuMasterPaginationRequest) -> dict:
     statements = select(MSku.sku_id, MSku.sku_master_code, MSku.master_sku, MSku.product_name)
 
-    if request_body.filter:
-        for key, value in request_body.filter.items():
-            if value is None or value == '':
-                continue
-            value = str(value).strip()
-            match key:
-                case 'skuId':
-                    statements = statements.where(MSku.sku_master_code.icontains(value, autoescape=True))
-                case 'productName':
-                    statements = statements.where(MSku.product_name.icontains(value, autoescape=True))
-                case 'sellerSku':
-                    # Older seller SKUs of the product (aliases) find it too
-                    statements = statements.where(or_(
-                        MSku.master_sku.icontains(value, autoescape=True),
-                        exists().where(
-                            MSkuAlias.sku_id == MSku.sku_id,
-                            MSkuAlias.sku_code.icontains(value, autoescape=True),
-                        ),
-                    ))
+    for key, value in (request_body.filter or {}).items():
+        statements = _filter_sku(statements, key, value)
 
     count = db.session.execute(
         select(func.count()).select_from(statements.subquery())
     ).scalar_one()
 
-    sort_columns = {
-        'skuId': MSku.sku_master_code,
-        'sellerSku': MSku.master_sku,
-        'productName': MSku.product_name,
-    }
-    if request_body.sort:
-        for column, order in request_body.sort.items():
-            order_fn = asc if order == SortOrder.ASC else desc
-            statements = statements.order_by(order_fn(sort_columns[column]).nulls_last())
-    else:
-        statements = statements.order_by(MSku.sku_master_code.asc())
-    # Tie-breaker keeps pages stable
-    statements = statements.order_by(MSku.sku_id.asc())
-
+    statements = _sort(statements, request_body.sort, _SORT_COLUMNS)
     statements = statements.offset(request_body.offset).limit(request_body.size)
     rows = db.session.execute(statements).all()
 
@@ -59,13 +31,141 @@ def get_skus(request_body: SkuMasterPaginationRequest) -> dict:
             'sellerSku': r.master_sku,
             'productName': r.product_name,
         } for r in rows],
-        'meta': {
-            'page': request_body.page,
-            'size': request_body.size,
-            'total': count,
-            'total_pages': (count + request_body.size - 1) // request_body.size,
-        },
+        'meta': _meta(request_body, count),
     }
+
+
+_SORT_COLUMNS = {
+    'skuId': MSku.sku_master_code,
+    'sellerSku': MSku.master_sku,
+    'productName': MSku.product_name,
+}
+
+
+def _filter_sku(statements, key: str, value):
+    """WHERE for one of the SKU columns shared by the SKU master and bundling tables."""
+    if value is None or str(value).strip() == '':
+        return statements
+    value = str(value).strip()
+    match key:
+        case 'skuId':
+            return statements.where(MSku.sku_master_code.icontains(value, autoescape=True))
+        case 'productName':
+            return statements.where(MSku.product_name.icontains(value, autoescape=True))
+        case 'sellerSku':
+            # Older seller SKUs of the product (aliases) find it too
+            return statements.where(or_(
+                MSku.master_sku.icontains(value, autoescape=True),
+                exists().where(
+                    MSkuAlias.sku_id == MSku.sku_id,
+                    MSkuAlias.sku_code.icontains(value, autoescape=True),
+                ),
+            ))
+    return statements
+
+
+def _sort(statements, sort: dict | None, columns: dict):
+    if sort:
+        for column, order in sort.items():
+            if column in columns:
+                order_fn = asc if order == SortOrder.ASC else desc
+                statements = statements.order_by(order_fn(columns[column]).nulls_last())
+    else:
+        statements = statements.order_by(MSku.sku_master_code.asc())
+    # Tie-breaker keeps pages stable
+    return statements.order_by(MSku.sku_id.asc())
+
+
+def _meta(request_body, count: int) -> dict:
+    return {
+        'page': request_body.page,
+        'size': request_body.size,
+        'total': count,
+        'total_pages': (count + request_body.size - 1) // request_body.size,
+    }
+
+
+def _flags(value: str | None) -> list[str]:
+    return [f.strip() for f in (value or '').split(',') if f.strip()]
+
+
+def _num(value) -> float | None:
+    return None if value is None else float(value)
+
+
+def get_bundles(request_body: SkuBundlePaginationRequest) -> dict:
+    """Bundle SKUs (they have rows in m_sku_bundle), each with its component breakdown."""
+    component_count = (
+        select(func.count()).where(MSkuBundle.bundle_sku_id == MSku.sku_id)
+        .correlate(MSku).scalar_subquery().label('component_count')
+    )
+    statements = (
+        select(MSku.sku_id, MSku.sku_master_code, MSku.master_sku, MSku.product_name, component_count)
+        .where(exists().where(MSkuBundle.bundle_sku_id == MSku.sku_id))
+    )
+    for key, value in (request_body.filter or {}).items():
+        if key == 'component' and value is not None and str(value).strip():
+            text_ = str(value).strip()
+            comp = aliased(MSku)
+            statements = statements.where(exists().where(
+                MSkuBundle.bundle_sku_id == MSku.sku_id,
+                or_(
+                    MSkuBundle.component_sku_code.icontains(text_, autoescape=True),
+                    exists().where(
+                        comp.sku_id == MSkuBundle.component_sku_id,
+                        or_(comp.sku_master_code.icontains(text_, autoescape=True),
+                            comp.master_sku.icontains(text_, autoescape=True),
+                            comp.product_name.icontains(text_, autoescape=True)),
+                    ),
+                ),
+            ))
+        else:
+            statements = _filter_sku(statements, key, value)
+
+    count = db.session.execute(select(func.count()).select_from(statements.subquery())).scalar_one()
+    statements = _sort(statements, request_body.sort, {**_SORT_COLUMNS, 'componentCount': component_count})
+    rows = db.session.execute(statements.offset(request_body.offset).limit(request_body.size)).all()
+
+    comp = aliased(MSku)
+    parts = db.session.execute(
+        select(MSkuBundle, comp.sku_master_code, comp.product_name)
+        .outerjoin(comp, comp.sku_id == MSkuBundle.component_sku_id)
+        .where(MSkuBundle.bundle_sku_id.in_([r.sku_id for r in rows]))
+        .order_by(MSkuBundle.bundle_sku_id, MSkuBundle.component_seq)
+    ).all() if rows else []
+    components: dict[int, list[dict]] = {}
+    for b, code, name in parts:
+        price = _num(b.component_price)
+        components.setdefault(b.bundle_sku_id, []).append({
+            'seq': b.component_seq,
+            'id': b.component_sku_id,
+            'skuId': code,
+            'sellerSku': b.component_sku_code,
+            'productName': name,
+            'qty': b.qty,
+            'unitPrice': price,
+            'subtotal': None if price is None else round(price * b.qty, 2),
+            # share of the bundle price, in percent
+            'priceRatio': None if b.price_ratio is None else round(float(b.price_ratio) * 100, 2),
+            'dqFlags': _flags(b.dq_flag),
+        })
+
+    records = []
+    for r in rows:
+        items = components.get(r.sku_id, [])
+        subtotals = [c['subtotal'] for c in items]
+        records.append({
+            'id': r.sku_id,
+            'skuId': r.sku_master_code,
+            'sellerSku': r.master_sku,
+            'productName': r.product_name,
+            'componentCount': r.component_count,
+            'totalQty': sum(c['qty'] for c in items),
+            # bundle price = sum of component price x qty; unknown when a component has no price
+            'bundlePrice': None if None in subtotals else round(sum(subtotals), 2),
+            'components': items,
+        })
+    return {'records': records, 'meta': _meta(request_body, count)}
 
 
 def search_skus(query: str, limit: int) -> list[dict]:
