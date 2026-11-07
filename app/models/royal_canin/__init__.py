@@ -1,7 +1,7 @@
 """Models of the `royal_canin` data-warehouse schema (stg -> m -> t -> dm, plus log)."""
 SCHEMA = 'royal_canin'
 
-from app.models.royal_canin.log import LogEtlRun, LogEtlStep, LogDqIssue, LogSkuMatch  # noqa: E402
+from app.models.royal_canin.log import LogEtlRun, LogEtlStep, LogDqIssue, LogSkuMatch, LogSkuMatchUpload, LogBundleChange  # noqa: E402
 from app.models.royal_canin.staging import (  # noqa: E402
     StgShopee,
     StgTokopedia,
@@ -38,6 +38,8 @@ __all__ = [
     'LogEtlStep',
     'LogDqIssue',
     'LogSkuMatch',
+    'LogSkuMatchUpload',
+    'LogBundleChange',
     'StgShopee',
     'StgTokopedia',
     'StgTiktok',

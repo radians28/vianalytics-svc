@@ -16,13 +16,16 @@ platform SKU differs per listing. So the listing's seller SKU is added as a non-
 later uploads of the same listing resolve), and there is no R4 promotion: m_sku.master_sku, the
 alias master flags and the SKU's other listings stay as they are.
 
-Afterwards handle_continue_order_data_{channel} is triggered with conf
-{upload_id, channel, match_ids}. That DAG (not built yet) must load ONLY the order lines of these
-resolved listings (log_sku_match channel_id + merchant_sku + sku_code), never re-load lines that
-were already mapped. orders/load.py can be reused with that filter: today load.run re-resolves and
-upserts every line of the upload and rewrites the order headers. Mixed orders already have a header
-from the first load: keep it and only recount item_line_count / total_quantity. If Airflow cannot
-start the DAG, the decisions stay saved and the upload stays Paused until /resume succeeds.
+A review row is shared by every upload that holds the listing (log_sku_match_upload): deciding
+it once resolves it for all of them. A decision on a seller SKU also settles the PENDING rows of
+other listings with the same seller SKU (any marketplace, any upload): they are mapped to the same
+SKU with resolution 'sibling'.
+
+Afterwards handle_continue_order_data_{channel} is triggered with conf {upload_id, channel,
+match_ids} for this upload and for every other Paused upload the decisions leave with nothing
+pending. It loads ONLY the order lines of those resolved listings, never lines that were already
+loaded, and keeps existing order headers (only recounting them). If Airflow cannot start the DAG,
+the decisions stay saved and the upload stays Paused until /resume succeeds.
 """
 import json
 
@@ -73,13 +76,15 @@ def get_review(upload_id: str) -> dict:
         SELECT m.match_id, m.status, c.channel_name, m.merchant_sku, m.seller_sku, m.sku_code,
                m.product_name, m.variation, m.order_line_count, m.first_order_at, m.last_order_at,
                m.candidates, m.resolved_sku_id, rs.sku_master_code AS resolved_code,
-               rs.product_name AS resolved_name, m.resolved_by, m.resolved_at
+               rs.product_name AS resolved_name, m.resolved_by, m.resolved_at,
+               m.resolution, mu.order_line_count AS upload_line_count
         FROM {S}.log_sku_match m
+        JOIN {S}.log_sku_match_upload mu ON mu.match_id = m.match_id AND mu.upload_id = :id
         JOIN {S}.m_channel c ON c.channel_id = m.channel_id
         LEFT JOIN {S}.m_sku rs ON rs.sku_id = m.resolved_sku_id
-        WHERE m.upload_id = :id
         ORDER BY (m.status <> 'PENDING'), m.match_id
     """, id=upload_id).mappings().all()
+    others = _other_uploads([r['match_id'] for r in rows], upload_id)
 
     # candidates are stored as found by the matcher; show the SKUs as they are now
     sku_ids = {c['sku_id'] for r in rows for c in (r['candidates'] or []) if c.get('sku_id') is not None}
@@ -110,7 +115,9 @@ def get_review(upload_id: str) -> dict:
         'skuCode': r['sku_code'] or None,
         'productName': r['product_name'],
         'variation': r['variation'] or None,
-        'orderLineCount': r['order_line_count'],
+        'orderLineCount': r['upload_line_count'] if r['upload_line_count'] is not None else r['order_line_count'],
+        # other uploads that hold the same listing: deciding it here resolves it there too
+        'otherUploads': others.get(r['match_id'], []),
         'firstOrderAt': r['first_order_at'],
         'lastOrderAt': r['last_order_at'],
         'candidates': candidates(r['candidates']),
@@ -120,6 +127,7 @@ def get_review(upload_id: str) -> dict:
             'productName': r['resolved_name'],
             'by': r['resolved_by'],
             'at': r['resolved_at'],
+            'resolution': r['resolution'],
         },
     } for r in rows]
 
@@ -135,9 +143,26 @@ def get_review(upload_id: str) -> dict:
             'createdAt': upload['created_at'],
             'pending': sum(1 for i in items if i['status'] == 'PENDING'),
             'resumeError': meta.get('resume_error'),
+            'resumeNeeded': bool(meta.get('resume_needed')),
         },
         'items': items,
     }
+
+
+def _other_uploads(match_ids: list[int], upload_id: str) -> dict[int, list[dict]]:
+    """match_id -> the other uploads holding the listing."""
+    if not match_ids:
+        return {}
+    found: dict[int, list[dict]] = {}
+    for r in _q("""
+        SELECT mu.match_id, u.upload_id, u.file_name, u.status
+        FROM {S}.log_sku_match_upload mu JOIN public.upload_progress u ON u.upload_id = mu.upload_id
+        WHERE mu.match_id = ANY(:ids) AND mu.upload_id <> :id
+        ORDER BY u.created_at
+    """, ids=match_ids, id=upload_id).mappings().all():
+        found.setdefault(r['match_id'], []).append(
+            {'id': r['upload_id'], 'fileName': r['file_name'], 'status': r['status']})
+    return found
 
 
 # -------------------------------------------------------------------------------- master writes
@@ -217,10 +242,12 @@ def _apply(upload_id: str, decisions: list[SkuDecision], user: str) -> dict:
         raise SkuReviewError(f"Upload is {upload['status']}; only Paused uploads can be resolved", 409)
 
     pending = {m['match_id']: m for m in _q("""
-        SELECT match_id, channel_id, merchant_sku, sku_code, seller_sku, product_name,
-               first_order_at, last_order_at
-        FROM {S}.log_sku_match WHERE upload_id = :id AND status = 'PENDING'
-        ORDER BY match_id FOR UPDATE
+        SELECT m.match_id, m.channel_id, m.merchant_sku, m.sku_code, m.seller_sku, m.product_name,
+               m.first_order_at, m.last_order_at
+        FROM {S}.log_sku_match m
+        JOIN {S}.log_sku_match_upload mu ON mu.match_id = m.match_id AND mu.upload_id = :id
+        WHERE m.status = 'PENDING'
+        ORDER BY m.match_id FOR UPDATE OF m
     """, id=upload_id).mappings().all()}
     requested = {d.matchId for d in decisions}
     if not pending:
@@ -239,7 +266,7 @@ def _apply(upload_id: str, decisions: list[SkuDecision], user: str) -> dict:
             raise SkuReviewError(f'SKU {sku_id} not found', 404)
         targets[sku_id] = dict(sku)
 
-    mapped, created = 0, []
+    mapped, created, decided = 0, [], {}
     for d in decisions:
         match = pending[d.matchId]
         if d.action == 'create':
@@ -253,9 +280,13 @@ def _apply(upload_id: str, decisions: list[SkuDecision], user: str) -> dict:
         _link_listing(match, dict(sku))
         _q("""
             UPDATE {S}.log_sku_match
-            SET status = :status, resolved_sku_id = :sku, resolved_by = :by, resolved_at = now()
+            SET status = :status, resolved_sku_id = :sku, resolved_by = :by, resolved_at = now(),
+                resolution = 'manual'
             WHERE match_id = :id AND status = 'PENDING'
         """, status=status, sku=sku['sku_id'], by=user, id=d.matchId)
+        decided[d.matchId] = dict(sku)
+
+    siblings = _settle_siblings(pending, decided, user, upload['file_name'])
 
     resolved = {'by': user, 'at': jakarta_now().isoformat(), 'mapped': mapped, 'created': len(created)}
     _q("""
@@ -266,7 +297,50 @@ def _apply(upload_id: str, decisions: list[SkuDecision], user: str) -> dict:
             updated_at = now()
         WHERE upload_id = :id
     """, id=upload_id, resolved=json.dumps(resolved))
-    return {'channel': upload['channel'], 'matchIds': sorted(pending), 'mapped': mapped, 'created': created}
+    resolved_ids = sorted(pending) + [s_['matchId'] for s_ in siblings]
+    affected = _q("""
+        SELECT DISTINCT upload_id FROM {S}.log_sku_match_upload
+        WHERE match_id = ANY(:ids) AND upload_id <> :id
+    """, ids=resolved_ids, id=upload_id).scalars().all()
+    return {'channel': upload['channel'], 'matchIds': sorted(pending), 'mapped': mapped, 'created': created,
+            'siblings': siblings, 'affected': list(affected)}
+
+
+def _settle_siblings(pending: dict, decided: dict[int, dict], user: str, file_name: str) -> list[dict]:
+    """PENDING rows of other listings with a seller SKU just decided get the same SKU (resolution
+    'sibling'): one seller SKU is one product on every marketplace. A sibling whose listing already
+    belongs to another SKU stays PENDING for its own review."""
+    codes = {}
+    for match_id, sku in decided.items():
+        code = pending[match_id]['sku_code']
+        if code:
+            codes.setdefault(code, sku)
+    if not codes:
+        return []
+    rows = _q("""
+        SELECT match_id, channel_id, merchant_sku, sku_code, seller_sku, product_name,
+               first_order_at, last_order_at
+        FROM {S}.log_sku_match
+        WHERE status = 'PENDING' AND sku_code = ANY(:codes) AND NOT (match_id = ANY(:ids))
+        ORDER BY match_id FOR UPDATE
+    """, codes=list(codes), ids=list(pending)).mappings().all()
+    settled = []
+    for row in rows:
+        sku = codes[row['sku_code']]
+        try:
+            with db.session.begin_nested():
+                _link_listing(row, sku)
+                _q("""
+                    UPDATE {S}.log_sku_match
+                    SET status = 'MAPPED', resolved_sku_id = :sku, resolved_by = :by, resolved_at = now(),
+                        resolution = 'sibling'
+                    WHERE match_id = :id AND status = 'PENDING'
+                """, sku=sku['sku_id'], by=f'{user} (via {file_name})', id=row['match_id'])
+        except SkuReviewError as err:
+            logger.warning('Sibling %s of %s left pending: %s', row['match_id'], row['sku_code'], err.message)
+            continue
+        settled.append({'matchId': row['match_id'], 'sellerSku': row['seller_sku'], 'skuId': sku['sku_master_code']})
+    return settled
 
 
 def resolve(upload_id: str, request_body: SkuReviewResolveRequest, user: str) -> dict:
@@ -277,8 +351,57 @@ def resolve(upload_id: str, request_body: SkuReviewResolveRequest, user: str) ->
     except Exception:
         db.session.rollback()
         raise
-    resume, status = _trigger_resume(upload_id, applied['channel'], applied['matchIds'], user)
-    return {'mapped': applied['mapped'], 'created': applied['created'], 'resume': resume, 'uploadStatus': status}
+    resume, status = _trigger_resume(upload_id, applied['channel'], _continue_match_ids(upload_id), user)
+    return {'mapped': applied['mapped'], 'created': applied['created'], 'siblings': applied['siblings'],
+            'resume': resume, 'uploadStatus': status, 'alsoResumed': _fan_out(applied['affected'], user)}
+
+
+def _continue_match_ids(upload_id: str) -> list[int]:
+    """The upload's resolved listings whose order lines the continue DAG loads."""
+    ids = _q("""
+        SELECT m.match_id FROM {S}.log_sku_match m
+        JOIN {S}.log_sku_match_upload mu ON mu.match_id = m.match_id AND mu.upload_id = :id
+        WHERE m.status <> 'PENDING' AND m.resolution IN ('manual', 'sibling', 'auto_mapped')
+        ORDER BY m.match_id
+    """, id=upload_id).scalars().all()
+    db.session.commit()
+    return list(ids)
+
+
+def _linked_pending(upload_id: str) -> int:
+    return _q("""
+        SELECT count(*) FROM {S}.log_sku_match m
+        JOIN {S}.log_sku_match_upload mu ON mu.match_id = m.match_id AND mu.upload_id = :id
+        WHERE m.status = 'PENDING'
+    """, id=upload_id).scalar_one()
+
+
+def _fan_out(upload_ids: list[str], user: str) -> list[dict]:
+    """Other uploads holding a listing resolved just now: recount their pending SKUs, and resume
+    every Paused one that has none left. Queued / Processing uploads pick the SKUs up in their own
+    run (orders.status.finalize flags a mid-run resolution as resume_needed)."""
+    results = []
+    for other in upload_ids:
+        row = _q("""
+            SELECT upload_id, file_name, channel, status FROM public.upload_progress WHERE upload_id = :id
+        """, id=other).mappings().first()
+        if row is None:
+            continue
+        pending = _linked_pending(other)
+        _q("""
+            UPDATE public.upload_progress
+            SET meta_data = (coalesce(meta_data::jsonb, '{}'::jsonb)
+                             || jsonb_build_object('sku_review_pending', :pending))::json,
+                updated_at = now()
+            WHERE upload_id = :id
+        """, id=other, pending=pending)
+        db.session.commit()
+        entry = {'uploadId': other, 'fileName': row['file_name'], 'status': row['status'], 'pending': pending}
+        if row['status'] == 'Paused' and pending == 0:
+            resume, status = _trigger_resume(other, row['channel'], _continue_match_ids(other), user)
+            entry.update({'triggered': resume['triggered'], 'error': resume.get('error'), 'status': status})
+        results.append(entry)
+    return results
 
 
 # --------------------------------------------------------------------------------------- resume
@@ -288,17 +411,13 @@ def resume(upload_id: str, user: str) -> dict:
     upload = _upload(upload_id)
     if upload['status'] != 'Paused':
         raise SkuReviewError(f"Upload is {upload['status']}; only Paused uploads can be resumed", 409)
-    pending = _q("""
-        SELECT count(*) FROM {S}.log_sku_match WHERE upload_id = :id AND status = 'PENDING'
-    """, id=upload_id).scalar_one()
+    pending = _linked_pending(upload_id)
     if pending:
         raise SkuReviewError(f'{pending} SKU(s) still need a decision', 409)
-    match_ids = _q("""
-        SELECT match_id FROM {S}.log_sku_match
-        WHERE upload_id = :id AND status <> 'PENDING' ORDER BY match_id
-    """, id=upload_id).scalars().all()
-    db.session.commit()   # end the read transaction before calling Airflow
-    result, status = _trigger_resume(upload_id, upload['channel'], list(match_ids), user)
+    match_ids = _continue_match_ids(upload_id)   # also ends the read transaction before calling Airflow
+    if not match_ids:
+        raise SkuReviewError('No resolved SKU of this upload has order lines left to load', 409)
+    result, status = _trigger_resume(upload_id, upload['channel'], match_ids, user)
     return {'resume': result, 'uploadStatus': status}
 
 
@@ -327,7 +446,7 @@ def _trigger_resume(upload_id: str, channel: str, match_ids: list[int], user: st
         UPDATE public.upload_progress
         SET status = 'Processing', error_message = NULL, processed_at = now(), last_heartbeat = now(),
             updated_at = now(),
-            meta_data = ((coalesce(meta_data::jsonb, '{}'::jsonb) - 'resume_error')
+            meta_data = ((coalesce(meta_data::jsonb, '{}'::jsonb) - 'resume_error' - 'resume_needed')
                          || jsonb_build_object('resume', CAST(:resume AS jsonb)))::json
         WHERE upload_id = :id
     """, id=upload_id, resume=json.dumps(resume_meta))

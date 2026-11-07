@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from app.blueprints.sku_master.requests.list_request import SkuBundlePaginationRequest, SkuMasterPaginationRequest
 from app.blueprints.sku_master.service import get_bundles, get_history, get_platforms, get_skus, search_skus
-from app.blueprints.sku_master import bundle_upload
+from app.blueprints.sku_master import bundle_upload, rebundle
 from app.common.helpers import success_response, error_response
 
 
@@ -56,10 +56,34 @@ def upload_bundles():
         if mode == 'preview':
             return success_response(bundle_upload.preview(data))
         user = g.user.get('user_email') or g.user.get('user_id')
-        result = bundle_upload.apply(data, file.filename, user)
+        reconsolidate = bool(metadata.get('reconsolidate'))
+        result = bundle_upload.apply(data, file.filename, user, reconsolidate=reconsolidate)
     except bundle_upload.BundleUploadError as err:
         return error_response(err.message, err.code, errors=err.errors or None)
+    # stored order lines are re-split by Airflow, after the bundles are committed
+    result['reconsolidate'] = (rebundle.start(result['changeIds'], user)
+                               if reconsolidate and result['changeIds'] else None)
     return success_response(result, message=f"{result['bundles']} bundle(s) saved", code=201)
+
+
+@route.get('/bundles/changes')
+def bundle_changes():
+    """Component list changes and their re-split state; ?status=PENDING,FAILED filters."""
+    statuses = [s.strip().upper() for s in (request.args.get('status') or '').split(',') if s.strip()]
+    return success_response(rebundle.list_changes(statuses))
+
+
+@route.post('/bundles/reconsolidate')
+def reconsolidate_bundles():
+    """Re-split the stored order lines of open changes (body {changeIds?}; all open ones by default)."""
+    body = request.get_json(silent=True) or {}
+    ids = body.get('changeIds') or []
+    if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
+        return error_response("changeIds must be a list of numbers", 400)
+    result = rebundle.start(ids, g.user.get('user_email') or g.user.get('user_id'))
+    if not result['changeIds']:
+        return error_response(result['error'], 409)
+    return success_response(result, message='Re-split started' if result['triggered'] else 'Re-split could not start')
 
 
 @route.get('/search')
