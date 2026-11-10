@@ -267,10 +267,25 @@ def _apply(upload_id: str, decisions: list[SkuDecision], user: str) -> dict:
         targets[sku_id] = dict(sku)
 
     mapped, created, decided = 0, [], {}
+    new_by_listing = {}   # (channel, platform SKU) -> SKU created earlier in this request
+    new_by_code = {}      # seller SKU -> SKU created earlier in this request
     for d in decisions:
         match = pending[d.matchId]
+        listing_key = (match['channel_id'], match['merchant_sku'])
+        reuse = None
         if d.action == 'create':
+            reuse = new_by_listing.get(listing_key) or (new_by_code.get(match['sku_code']) if match['sku_code'] else None)
+        if reuse is not None:
+            # the same listing under another seller SKU, or the same seller SKU on another listing:
+            # one product, so it joins the SKU just created in this request
+            sku = reuse
+            mapped += 1
+            status = 'MAPPED'
+        elif d.action == 'create':
             sku = _create_sku(match, d.productName)
+            new_by_listing[listing_key] = sku
+            if match['sku_code']:
+                new_by_code[match['sku_code']] = sku
             created.append({'matchId': d.matchId, 'id': sku['sku_id'], 'skuId': sku['sku_master_code']})
             status = 'CREATED_NEW'
         else:
