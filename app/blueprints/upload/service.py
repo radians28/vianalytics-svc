@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 from flask import current_app
-from sqlalchemy import asc, case, desc, func, literal, select
+from sqlalchemy import asc, case, desc, func, literal, select, text
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
@@ -12,6 +12,7 @@ from app.common.helpers import gen_uuid, jakarta_now
 from app.common.logger import get_logger
 from app.common.pagination_request import SortOrder
 from app.extensions import db
+from app.models.royal_canin import SCHEMA
 from app.models.upload import UploadProgress
 
 
@@ -125,6 +126,23 @@ def _channels_for(marketplace: str) -> list[str]:
     ]
 
 
+def _sku_summaries(upload_ids: list[str]) -> dict[str, dict]:
+    """{upload_id: {created, mapped}}: listings of each upload resolved in royal_canin.log_sku_match
+    (auto, review, sibling and rematch decisions alike; a review row counts for every upload holding it)."""
+    if not upload_ids:
+        return {}
+    rows = db.session.execute(text(f"""
+        SELECT mu.upload_id,
+               count(*) FILTER (WHERE m.status = 'CREATED_NEW') AS created,
+               count(*) FILTER (WHERE m.status = 'MAPPED') AS mapped
+        FROM {SCHEMA}.log_sku_match_upload mu
+        JOIN {SCHEMA}.log_sku_match m ON m.match_id = mu.match_id
+        WHERE mu.upload_id = ANY(:ids)
+        GROUP BY mu.upload_id
+    """), {'ids': upload_ids}).all()
+    return {r.upload_id: {'created': r.created, 'mapped': r.mapped} for r in rows}
+
+
 def _fifo_orders(upload_ids: list[str]) -> dict[str, int]:
     """Queue position (1-based) of the given uploads among all queued ones."""
     if not upload_ids:
@@ -210,6 +228,7 @@ def get_progress(request_body: ProgressPaginationRequest) -> dict:
     records = db.session.execute(statements).scalars().all()
 
     fifo_orders = _fifo_orders([r.upload_id for r in records if r.status == 'Queued'])
+    sku_summaries = _sku_summaries([r.upload_id for r in records])
 
     return {
         'records': [{
@@ -222,6 +241,8 @@ def get_progress(request_body: ProgressPaginationRequest) -> dict:
             'recordsSummary': _records_summary(r),
             'status': r.status,
             'statusDetail': '',
+            # listings decided through the SKU name match: new SKUs and listings mapped to an existing one
+            'skuSummary': sku_summaries.get(r.upload_id, {'created': 0, 'mapped': 0}),
             'timestamp': r.created_at,
         } for r in records],
         'meta': {
