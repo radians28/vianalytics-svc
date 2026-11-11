@@ -183,6 +183,24 @@ def _sku(sku_id: int):
 
 
 
+def _log_listing_conflict(match, listing, sku: dict):
+    """One OPEN listing_sku_conflict issue per (listing, seller SKU): the review mapped the seller SKU
+    to another SKU than the listing's."""
+    key = f"{match['merchant_sku']}|{match['sku_code'] or ''}"
+    exists = _q("""
+        SELECT 1 FROM {S}.log_dq_issue
+        WHERE dq_flag = 'listing_sku_conflict' AND record_key = :key AND status = 'OPEN'
+    """, key=key).first()
+    if exists:
+        return
+    _q("""
+        INSERT INTO {S}.log_dq_issue (source_table, dq_flag, record_key, sku_id, detail)
+        VALUES (:table, 'listing_sku_conflict', :key, :sku, :detail)
+    """, table=f'{SCHEMA}.log_sku_match', key=key, sku=sku['sku_id'],
+       detail=(f"review mapped seller SKU {match['seller_sku']} of listing {match['merchant_sku']} to "
+               f"{sku['sku_master_code']}; the listing stays on {listing['sku_master_code']}"))
+
+
 def _create_sku(match, product_name: str | None) -> dict:
     """create_sku: a new SKU master for the listing; its seller SKU becomes the master code."""
     code = match['sku_code'] or None
@@ -198,21 +216,30 @@ def _link_listing(match, sku: dict):
     """The listing (channel, platform SKU) and its seller SKU now point at `sku`.
 
     Only rows of this listing are added; the SKU's master seller SKU and its other listings are
-    never changed (no R4 promotion from a review)."""
+    never changed (no R4 promotion from a review).
+
+    A listing can be sold under several seller SKUs over time, so it may already belong to another
+    SKU than the one decided here. The order load resolves a line by its seller SKU first, so the
+    seller SKU carries the decision: it is accepted when the row has a seller SKU that is new or
+    already belongs to `sku`. The listing then keeps its SKU and the mismatch is logged as a
+    listing_sku_conflict DQ issue. Without a seller SKU only the listing's own SKU can be chosen."""
     sku_id = sku['sku_id']
     code = match['sku_code'] or None
     listing = _q("""
         SELECT p.sku_id, s.sku_master_code FROM {S}.m_platform_sku p JOIN {S}.m_sku s USING (sku_id)
         WHERE p.channel_id = :ch AND p.merchant_sku = :ms
     """, ch=match['channel_id'], ms=match['merchant_sku']).mappings().first()
-    if listing is not None and listing['sku_id'] != sku_id:
-        raise SkuReviewError(
-            f"Listing {match['merchant_sku']} already belongs to {listing['sku_master_code']}", 409)
     if code:
         owner = alias_owner(code)
         if owner is not None and owner != sku_id:
             other = _q('SELECT sku_master_code FROM {S}.m_sku WHERE sku_id = :id', id=owner).scalar()
             raise SkuReviewError(f'Seller SKU {code} already belongs to {other}', 409)
+    if listing is not None and listing['sku_id'] != sku_id:
+        if not code:
+            raise SkuReviewError(
+                f"Listing {match['merchant_sku']} already belongs to {listing['sku_master_code']} "
+                "and has no seller SKU to map", 409)
+        _log_listing_conflict(match, listing, sku)
 
     if listing is None:                                                    # add_platform
         _q("""
@@ -241,6 +268,32 @@ def _link_listing(match, sku: dict):
             """, code=code, at=match['first_order_at'])
 
 
+def _drop_settled(upload_id: str, decisions: list[SkuDecision], pending: dict) -> list[SkuDecision]:
+    """Decisions for listings of this upload that were resolved meanwhile (by another review, a
+    sibling or the rematch) are dropped when they agree: a map to the SKU the listing now has. One
+    that disagrees fails with what the listing was resolved to, so the reviewer can reload."""
+    stale = {d.matchId: d for d in decisions if d.matchId not in pending}
+    if not stale:
+        return decisions
+    rows = _q("""
+        SELECT m.match_id, m.status, m.resolved_sku_id, m.resolved_by, s.sku_master_code
+        FROM {S}.log_sku_match m
+        JOIN {S}.log_sku_match_upload mu ON mu.match_id = m.match_id AND mu.upload_id = :id
+        LEFT JOIN {S}.m_sku s ON s.sku_id = m.resolved_sku_id
+        WHERE m.match_id = ANY(:ids) AND m.status <> 'PENDING'
+    """, id=upload_id, ids=list(stale)).mappings().all()
+    settled = set()
+    for row in rows:
+        d = stale[row['match_id']]
+        if d.action == 'map' and d.skuId == row['resolved_sku_id']:
+            settled.add(row['match_id'])
+            continue
+        raise SkuReviewError(
+            f"Match {row['match_id']} was already resolved to {row['sku_master_code']} by "
+            f"{row['resolved_by']}; reload the review", 409)
+    return [d for d in decisions if d.matchId not in settled]
+
+
 def _apply(upload_id: str, decisions: list[SkuDecision], user: str) -> dict:
     _q('SELECT pg_advisory_xact_lock(:key)', key=SKU_LOCK_KEY)
     upload = _upload(upload_id, lock=True)
@@ -255,6 +308,7 @@ def _apply(upload_id: str, decisions: list[SkuDecision], user: str) -> dict:
         WHERE m.status = 'PENDING'
         ORDER BY m.match_id FOR UPDATE OF m
     """, id=upload_id).mappings().all()}
+    decisions = _drop_settled(upload_id, decisions, pending)
     requested = {d.matchId for d in decisions}
     if not pending:
         raise SkuReviewError('No SKU of this upload waits for review', 409)
