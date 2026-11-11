@@ -17,7 +17,13 @@ price. The rules follow the offline builder (sku_consolidation/common/bundle.py,
 Every bundle SKU in the file has its components replaced; bundles not in the file are kept.
 `preview` validates and reports without writing; `apply` writes in one transaction under the SKU
 master advisory lock.
+
+Order lines already loaded keep the components they were split into. Before replacing a bundle,
+apply saves its old and new component lists in log_bundle_change (only bundles whose list changes);
+the reconsolidate_bundle_orders DAG uses them to rebuild each stored bundle line and split it again
+with the new list. The preview reports how many stored order lines use each bundle.
 """
+import json
 import re
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -317,9 +323,33 @@ def _resolve(parsed: Parsed) -> dict:
     return {'new': list(new.values()), 'replaced': [b.code for b in bundles.values() if b.sku_id in existing]}
 
 
-def _report(parsed: Parsed, resolved: dict) -> dict:
+def affected_lines(sku_ids: list[int]) -> dict[int, int]:
+    """Stored order lines per bundle SKU: split bundle lines (one per order line, found like the order
+    load resolves a line: seller SKU alias first, else the listing) and lines of the SKU still
+    unsplit (it was not a bundle when they were loaded)."""
+    if not sku_ids:
+        return {}
+    rows = q("""
+        WITH cand AS (
+            SELECT d.order_id, split_part(d.line_key, '#', 1) AS base,
+                   CASE WHEN d.is_bundle THEN coalesce(a.sku_id, p.sku_id) ELSE d.sku_id END AS bundle_sku_id
+            FROM {S}.t_order_detail d
+            LEFT JOIN {S}.m_sku_alias a ON a.sku_code = upper(btrim(d.seller_sku))
+            LEFT JOIN {S}.m_platform_sku p ON p.platform_sku_id = d.platform_sku_id
+            WHERE (d.is_bundle AND (p.sku_id = ANY(:ids) OR a.sku_id = ANY(:ids)))
+               OR (NOT d.is_bundle AND d.sku_id = ANY(:ids))
+        )
+        SELECT bundle_sku_id, count(DISTINCT (order_id, base)) FROM cand
+        WHERE bundle_sku_id = ANY(:ids) GROUP BY bundle_sku_id
+    """, ids=list(sku_ids)).all()
+    return {sku_id: n for sku_id, n in rows}
+
+
+def _report(parsed: Parsed, resolved: dict, affected: dict[int, int] | None = None) -> dict:
     bundles = parsed.bundles
+    affected = affected or {}
     return {
+        'affectedLines': sum(affected.get(b.sku_id, 0) for b in bundles.values() if b.sku_id is not None),
         'bundles': len(bundles),
         'components': sum(len(b.components) for b in bundles.values()),
         'rows': len(parsed.raw),
@@ -333,6 +363,7 @@ def _report(parsed: Parsed, resolved: dict) -> dict:
             'productName': b.name,
             'skuId': b.sku_id,
             'replaces': b.code in resolved['replaced'],
+            'affectedLines': affected.get(b.sku_id, 0) if b.sku_id is not None else 0,
             'components': [{
                 'lineNo': c.line_no,
                 'sellerSku': c.code,
@@ -349,12 +380,28 @@ def _report(parsed: Parsed, resolved: dict) -> dict:
 
 def preview(data: bytes) -> dict:
     parsed = parse(data)
-    report = _report(parsed, _resolve(parsed))
+    resolved = _resolve(parsed)
+    known = [b.sku_id for b in parsed.bundles.values() if b.sku_id is not None]
+    report = _report(parsed, resolved, affected_lines(known))
     db.session.rollback()                               # read only
     return report
 
 
-def apply(data: bytes, file_name: str, user: str) -> dict:
+def _bom_json(rows) -> list[dict]:
+    return [{'seq': r['seq'], 'component_sku_id': r['component_sku_id'], 'qty': r['qty'],
+             'price_ratio': str(r['price_ratio']) if r['price_ratio'] is not None else None,
+             'dq_flag': r['dq_flag'] or None} for r in rows]
+
+
+def _same_bom(old: list[dict] | None, new: list[dict]) -> bool:
+    def key(rows):
+        return sorted((r['seq'], r['component_sku_id'], r['qty'],
+                       None if r['price_ratio'] is None else Decimal(r['price_ratio']).quantize(RATIO_PLACES))
+                      for r in rows)
+    return old is not None and key(old) == key(new)
+
+
+def apply(data: bytes, file_name: str, user: str, reconsolidate: bool = False) -> dict:
     parsed = parse(data)
     try:
         lock_master()
@@ -399,6 +446,27 @@ def apply(data: bytes, file_name: str, user: str) -> dict:
           d=[r['component_sku'] for r in raw], e=[r['component_name'] for r in raw],
           f=[r['qty'] for r in raw], g=[r['unit_price'] for r in raw], n=[r['row'] for r in raw])
 
+        # snapshot the component lists that change, for re-splitting stored order lines
+        old_boms: dict[int, list[dict]] = {}
+        for r in q("""
+            SELECT bundle_sku_id, component_seq AS seq, component_sku_id, qty, price_ratio, dq_flag
+            FROM {S}.m_sku_bundle WHERE bundle_sku_id = ANY(:ids) ORDER BY bundle_sku_id, component_seq
+        """, ids=bundle_ids).mappings().all():
+            old_boms.setdefault(r['bundle_sku_id'], []).append(r)
+        changes = []
+        for b in parsed.bundles.values():
+            old = _bom_json(old_boms[b.sku_id]) if b.sku_id in old_boms else None
+            new = _bom_json([{'seq': c.line_no, 'component_sku_id': c.sku_id, 'qty': c.qty, 'price_ratio': c.ratio,
+                              'dq_flag': ','.join(c.flags) or None}
+                             for c in sorted(b.components.values(), key=lambda c: c.line_no)])
+            if not _same_bom(old, new):
+                changes.append((b.sku_id, old, new))
+        change_ids = [q("""
+            INSERT INTO {S}.log_bundle_change (run_id, bundle_sku_id, old_bom, new_bom, status)
+            VALUES (:run, :sku, CAST(:old AS jsonb), CAST(:new AS jsonb), :status) RETURNING change_id
+        """, run=run_id, sku=sku_id, old=json.dumps(old) if old is not None else None, new=json.dumps(new),
+            status='PENDING' if reconsolidate else 'SKIPPED').scalar_one() for sku_id, old, new in changes]
+
         deleted = q('DELETE FROM {S}.m_sku_bundle WHERE bundle_sku_id = ANY(:ids)', ids=bundle_ids).rowcount
         lines = [(b.sku_id, c) for b in parsed.bundles.values() for c in b.components.values()]
         q("""
@@ -415,5 +483,7 @@ def apply(data: bytes, file_name: str, user: str) -> dict:
         db.session.rollback()
         raise
 
-    report = _report(parsed, resolved)
-    return {**report, 'created': created, 'deletedRows': deleted, 'insertedRows': len(lines), 'runId': run_id}
+    report = _report(parsed, resolved, affected_lines([b.sku_id for b in parsed.bundles.values()]))
+    db.session.commit()
+    return {**report, 'created': created, 'deletedRows': deleted, 'insertedRows': len(lines), 'runId': run_id,
+            'changeIds': change_ids, 'changedBundles': len(change_ids)}
