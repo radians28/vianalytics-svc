@@ -91,6 +91,7 @@ def get_review(upload_id: str) -> dict:
         ORDER BY (m.status <> 'PENDING'), m.match_id
     """, id=upload_id).mappings().all()
     others = _other_uploads([r['match_id'] for r in rows], upload_id)
+    owners = _current_owners([r for r in rows if r['status'] == 'PENDING'])
 
     # candidates are stored as found by the matcher; show the SKUs as they are now
     sku_ids = {c['sku_id'] for r in rows for c in (r['candidates'] or []) if c.get('sku_id') is not None}
@@ -127,6 +128,11 @@ def get_review(upload_id: str) -> dict:
         'firstOrderAt': r['first_order_at'],
         'lastOrderAt': r['last_order_at'],
         'candidates': candidates(r['candidates']),
+        # the SKU that already owns the seller SKU (added after the listing was logged, e.g. by
+        # another review or the rematch): the only SKU this listing can be mapped to, and no new SKU
+        'sellerSkuOwner': owners['code'].get(r['sku_code']) if r['status'] == 'PENDING' and r['sku_code'] else None,
+        # the SKU the listing (channel, platform SKU) is linked to now, under another seller SKU
+        'listingSku': owners['listing'].get(r['match_id']) if r['status'] == 'PENDING' else None,
         'resolved': None if r['status'] == 'PENDING' else {
             'id': r['resolved_sku_id'],
             'skuId': r['resolved_code'],
@@ -153,6 +159,35 @@ def get_review(upload_id: str) -> dict:
         },
         'items': items,
     }
+
+
+def _current_owners(rows) -> dict:
+    """{'code': sku_code -> SKU owning that seller SKU, 'listing': match_id -> SKU of the listing}."""
+    found = {'code': {}, 'listing': {}}
+    if not rows:
+        return found
+
+    def shape(r) -> dict:
+        return {'id': r['sku_id'], 'skuId': r['sku_master_code'], 'sellerSku': r['master_sku'],
+                'productName': r['product_name']}
+
+    codes = sorted({r['sku_code'] for r in rows if r['sku_code']})
+    if codes:
+        for r in _q("""
+            SELECT a.sku_code, s.sku_id, s.sku_master_code, s.master_sku, s.product_name
+            FROM {S}.m_sku_alias a JOIN {S}.m_sku s USING (sku_id)
+            WHERE a.sku_code = ANY(:codes)
+        """, codes=codes).mappings().all():
+            found['code'][r['sku_code']] = shape(r)
+    for r in _q("""
+        SELECT m.match_id, s.sku_id, s.sku_master_code, s.master_sku, s.product_name
+        FROM {S}.log_sku_match m
+        JOIN {S}.m_platform_sku p ON p.channel_id = m.channel_id AND p.merchant_sku = m.merchant_sku
+        JOIN {S}.m_sku s ON s.sku_id = p.sku_id
+        WHERE m.match_id = ANY(:ids)
+    """, ids=[r['match_id'] for r in rows]).mappings().all():
+        found['listing'][r['match_id']] = shape(r)
+    return found
 
 
 def _other_uploads(match_ids: list[int], upload_id: str) -> dict[int, list[dict]]:
@@ -204,8 +239,11 @@ def _log_listing_conflict(match, listing, sku: dict):
 def _create_sku(match, product_name: str | None) -> dict:
     """create_sku: a new SKU master for the listing; its seller SKU becomes the master code."""
     code = match['sku_code'] or None
-    if code and alias_owner(code) is not None:
-        raise SkuReviewError(f"Seller SKU {code} already belongs to another SKU; map the listing instead", 409)
+    owner = alias_owner(code) if code else None
+    if owner is not None:
+        other = _q('SELECT sku_master_code FROM {S}.m_sku WHERE sku_id = :id', id=owner).scalar()
+        raise SkuReviewError(
+            f"Seller SKU {code} already belongs to {other}; map match {match['match_id']} to {other} instead", 409)
     name = product_name or match['product_name'] or match['seller_sku'] or match['merchant_sku']
     return insert_sku(code, name, sku_type(code, name) if code else 'unknown',
                       'name_unmatched' if code else 'missing_seller_sku,name_unmatched',
