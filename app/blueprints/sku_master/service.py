@@ -1,5 +1,5 @@
 from flask import abort
-from sqlalchemy import asc, desc, exists, func, or_, select, text
+from sqlalchemy import asc, column, desc, exists, func, or_, select, table, text
 
 from sqlalchemy.orm import aliased
 
@@ -10,8 +10,19 @@ from app.models.royal_canin import SCHEMA
 from app.models.royal_canin.master import MChannel, MPlatformSku, MSku, MSkuAlias, MSkuBundle
 
 
+# A SKU being merged away (log_sku_change MERGE not DONE) is deleted once its order lines have moved;
+# until then it is hidden from the list and the pickers
+_SKU_CHANGE = table('log_sku_change', column('source_sku_id'), column('kind'), column('status'), schema=SCHEMA)
+
+
+def _not_merging():
+    return MSku.sku_id.not_in(
+        select(_SKU_CHANGE.c.source_sku_id).where(
+            _SKU_CHANGE.c.kind == 'MERGE', _SKU_CHANGE.c.status.in_(('PENDING', 'RUNNING', 'FAILED'))))
+
+
 def get_skus(request_body: SkuMasterPaginationRequest) -> dict:
-    statements = select(MSku.sku_id, MSku.sku_master_code, MSku.master_sku, MSku.product_name)
+    statements = select(MSku.sku_id, MSku.sku_master_code, MSku.master_sku, MSku.product_name).where(_not_merging())
 
     for key, value in (request_body.filter or {}).items():
         statements = _filter_sku(statements, key, value)
@@ -170,7 +181,7 @@ def get_bundles(request_body: SkuBundlePaginationRequest) -> dict:
 
 def search_skus(query: str, limit: int) -> list[dict]:
     """SKU options for a picker: code, latest seller SKU, any older seller SKU or name contains `query`."""
-    statements = select(MSku.sku_id, MSku.sku_master_code, MSku.master_sku, MSku.product_name)
+    statements = select(MSku.sku_id, MSku.sku_master_code, MSku.master_sku, MSku.product_name).where(_not_merging())
     query = query.strip()
     if query:
         statements = statements.where(or_(

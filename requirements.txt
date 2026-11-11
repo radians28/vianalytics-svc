@@ -12,3 +12,5 @@ python-dotenv
 gunicorn
 requests
 python-calamine
+# TF-IDF name matching for SKU merge suggestions (app/common/sku_match.py)
+scikit-learn
