@@ -21,6 +21,10 @@ it once resolves it for all of them. A decision on a seller SKU also settles the
 other listings with the same seller SKU (any marketplace, any upload): they are mapped to the same
 SKU with resolution 'sibling'.
 
+Every other listing still waiting is then re-matched against the changed master by the
+rematch_pending_skus DAG (mapped / new SKU / refreshed candidates; Paused uploads it empties are
+resumed there).
+
 Afterwards handle_continue_order_data_{channel} is triggered with conf {upload_id, channel,
 match_ids} for this upload and for every other Paused upload the decisions leave with nothing
 pending. It loads ONLY the order lines of those resolved listings, never lines that were already
@@ -41,8 +45,10 @@ from app.common.logger import get_logger
 from app.extensions import db
 from app.models.royal_canin import SCHEMA
 
-# DAG that loads the order lines of the resolved listings (not built yet)
+# DAG that loads the order lines of the resolved listings
 CONTINUE_DAG_ID = 'handle_continue_order_data_{channel}'
+# DAG that re-matches every listing still waiting for review against the master the decisions changed
+REMATCH_DAG_ID = 'rematch_pending_skus'
 
 logger = get_logger(__name__)
 
@@ -267,10 +273,25 @@ def _apply(upload_id: str, decisions: list[SkuDecision], user: str) -> dict:
         targets[sku_id] = dict(sku)
 
     mapped, created, decided = 0, [], {}
+    new_by_listing = {}   # (channel, platform SKU) -> SKU created earlier in this request
+    new_by_code = {}      # seller SKU -> SKU created earlier in this request
     for d in decisions:
         match = pending[d.matchId]
+        listing_key = (match['channel_id'], match['merchant_sku'])
+        reuse = None
         if d.action == 'create':
+            reuse = new_by_listing.get(listing_key) or (new_by_code.get(match['sku_code']) if match['sku_code'] else None)
+        if reuse is not None:
+            # the same listing under another seller SKU, or the same seller SKU on another listing:
+            # one product, so it joins the SKU just created in this request
+            sku = reuse
+            mapped += 1
+            status = 'MAPPED'
+        elif d.action == 'create':
             sku = _create_sku(match, d.productName)
+            new_by_listing[listing_key] = sku
+            if match['sku_code']:
+                new_by_code[match['sku_code']] = sku
             created.append({'matchId': d.matchId, 'id': sku['sku_id'], 'skuId': sku['sku_master_code']})
             status = 'CREATED_NEW'
         else:
@@ -352,8 +373,23 @@ def resolve(upload_id: str, request_body: SkuReviewResolveRequest, user: str) ->
         db.session.rollback()
         raise
     resume, status = _trigger_resume(upload_id, applied['channel'], _continue_match_ids(upload_id), user)
+    also_resumed = _fan_out(applied['affected'], user)
     return {'mapped': applied['mapped'], 'created': applied['created'], 'siblings': applied['siblings'],
-            'resume': resume, 'uploadStatus': status, 'alsoResumed': _fan_out(applied['affected'], user)}
+            'resume': resume, 'uploadStatus': status, 'alsoResumed': also_resumed,
+            'rematch': _trigger_rematch(upload_id, user)}
+
+
+def _trigger_rematch(upload_id: str, user: str) -> dict:
+    """Re-match the listings still waiting (any upload) against the master these decisions changed.
+    Never fails the resolve: the next review or upload triggers it again."""
+    dag_run_id = f'rematch__review__{upload_id}__{jakarta_now():%Y%m%d%H%M%S}'
+    try:
+        trigger_dag(REMATCH_DAG_ID, conf={'source': 'review', 'upload_id': upload_id, 'by': user},
+                    dag_run_id=dag_run_id)
+    except Exception as err:
+        logger.error('Could not start %s after the review of %s: %s', REMATCH_DAG_ID, upload_id, err)
+        return {'triggered': False, 'dagId': REMATCH_DAG_ID, 'error': str(err)[:500]}
+    return {'triggered': True, 'dagId': REMATCH_DAG_ID, 'dagRunId': dag_run_id}
 
 
 def _continue_match_ids(upload_id: str) -> list[int]:
@@ -361,7 +397,7 @@ def _continue_match_ids(upload_id: str) -> list[int]:
     ids = _q("""
         SELECT m.match_id FROM {S}.log_sku_match m
         JOIN {S}.log_sku_match_upload mu ON mu.match_id = m.match_id AND mu.upload_id = :id
-        WHERE m.status <> 'PENDING' AND m.resolution IN ('manual', 'sibling', 'auto_mapped')
+        WHERE m.status <> 'PENDING' AND m.resolution IN ('manual', 'sibling', 'auto_mapped', 'rematch_created')
         ORDER BY m.match_id
     """, id=upload_id).scalars().all()
     db.session.commit()
