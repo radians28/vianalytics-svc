@@ -15,6 +15,8 @@ from app.models.royal_canin.staging import (  # noqa: E402
 from app.models.royal_canin.master import (  # noqa: E402
     MChannel,
     MCity,
+    MCityAlias,
+    MZipcode,
     MSku,
     MSkuAlias,
     MPlatformSku,
@@ -50,6 +52,8 @@ __all__ = [
     'StgUniqueSku',
     'MChannel',
     'MCity',
+    'MCityAlias',
+    'MZipcode',
     'MSku',
     'MSkuAlias',
     'MPlatformSku',

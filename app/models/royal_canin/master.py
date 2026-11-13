@@ -3,6 +3,7 @@
 Generated from sku_consolidation/ddl_royal_canin.sql; keep both in sync until the SQL file is retired.
 """
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from app.extensions import db
 from app.models.royal_canin import SCHEMA
 
@@ -30,12 +31,54 @@ class MCity(db.Model):
     __table_args__ = (
         sa.PrimaryKeyConstraint('city_id', name='pk_m_city'),
         sa.UniqueConstraint('city_name', 'province_name', name='uq_m_city_city_name_province_name'),
-        {'schema': SCHEMA, 'comment': 'kota + provinsi sesuai penulisan marketplace (tanpa normalisasi)'},
+        sa.CheckConstraint("city_type IN ('KOTA','KABUPATEN')", name='ck_m_city_1'),
+        sa.Index('uq_m_city_city_code', 'city_code', unique=True, postgresql_where=sa.text('city_code IS NOT NULL')),
+        {'schema': SCHEMA, 'comment': 'kabupaten/kota kanonik sesuai Kepmendagri (city_code); penulisan marketplace dipetakan lewat m_city_alias. Baris tanpa city_code = penulisan yang belum bisa dipetakan (dq_flag unresolved)'},
     )
 
     city_id = db.Column(sa.Integer(), sa.Identity(always=False), nullable=False)
     city_name = db.Column(sa.Text(), nullable=False)
     province_name = db.Column(sa.Text(), nullable=False)
+    created_at = db.Column(sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()'), comment='timestamptz: instan waktu absolut; tampil dalam Asia/Jakarta (WIB) pada session TimeZone default')
+    city_code = db.Column(sa.Text(), comment='kode Kemendagri kabupaten/kota, mis. 32.75')
+    city_type = db.Column(sa.Text(), comment='KOTA | KABUPATEN')
+    province_code = db.Column(sa.Text(), comment='kode Kemendagri provinsi, mis. 32')
+    dq_flag = db.Column(sa.Text(), comment='unresolved: penulisan marketplace yang belum cocok dengan referensi')
+
+
+class MCityAlias(db.Model):
+    __tablename__ = 'm_city_alias'
+    __table_args__ = (
+        sa.PrimaryKeyConstraint('raw_city_name', 'raw_province_name', name='pk_m_city_alias'),
+        sa.ForeignKeyConstraint(['city_id'], ['royal_canin.m_city.city_id'], name='fk_m_city_alias_city_id'),
+        sa.CheckConstraint("match_method IN ('zip_majority','name_exact','name_normalized','bare_name_kota','manual','unresolved')", name='ck_m_city_alias_1'),
+        sa.Index('ix_m_city_alias_city_id', 'city_id'),
+        {'schema': SCHEMA, 'comment': 'penulisan kota/provinsi dari marketplace -> m_city kanonik'},
+    )
+
+    raw_city_name = db.Column(sa.Text(), nullable=False, comment='kota persis seperti di file marketplace')
+    raw_province_name = db.Column(sa.Text(), nullable=False, comment="provinsi persis seperti di file marketplace ('' bila kosong)")
+    city_id = db.Column(sa.Integer(), nullable=False)
+    match_method = db.Column(sa.Text(), nullable=False, comment='zip_majority: kode pos order · name_exact / name_normalized: nama · bare_name_kota: nama tanpa Kota/Kab. dianggap Kota · manual · unresolved: menunjuk baris m_city tanpa city_code')
+    dq_flag = db.Column(sa.Text(), comment='mis. bare_name_kota, name_zip_conflict')
+    created_at = db.Column(sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()'), comment='timestamptz: instan waktu absolut; tampil dalam Asia/Jakarta (WIB) pada session TimeZone default')
+
+
+class MZipcode(db.Model):
+    __tablename__ = 'm_zipcode'
+    __table_args__ = (
+        sa.PrimaryKeyConstraint('zip_code', name='pk_m_zipcode'),
+        sa.ForeignKeyConstraint(['city_id'], ['royal_canin.m_city.city_id'], name='fk_m_zipcode_city_id'),
+        sa.CheckConstraint("zip_code ~ '^[0-9]{5}$'", name='ck_m_zipcode_1'),
+        sa.Index('ix_m_zipcode_city_id', 'city_id'),
+        {'schema': SCHEMA, 'comment': 'kode pos -> satu kabupaten/kota'},
+    )
+
+    zip_code = db.Column(sa.Text(), nullable=False)
+    city_id = db.Column(sa.Integer(), nullable=False)
+    dq_flag = db.Column(sa.Text(), comment='multi_city_in_reference: referensi memuat kode pos ini di >1 kabupaten/kota; dipilih yang desanya terbanyak')
+    other_city_ids = db.Column(postgresql.ARRAY(sa.Integer()), comment='kabupaten/kota lain yang juga memakai kode pos ini menurut referensi; bila penulisan kota order menyebut salah satunya, penulisan itu yang dipakai')
+    source = db.Column(sa.Text(), nullable=False, comment='mis. kepmendagri_2025')
     created_at = db.Column(sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()'), comment='timestamptz: instan waktu absolut; tampil dalam Asia/Jakarta (WIB) pada session TimeZone default')
 
 
