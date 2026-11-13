@@ -1,0 +1,515 @@
+city_code,city_name,city_type,province_code,province_name
+11.01,Kabupaten Aceh Selatan,KABUPATEN,11,Aceh
+11.02,Kabupaten Aceh Tenggara,KABUPATEN,11,Aceh
+11.03,Kabupaten Aceh Timur,KABUPATEN,11,Aceh
+11.04,Kabupaten Aceh Tengah,KABUPATEN,11,Aceh
+11.05,Kabupaten Aceh Barat,KABUPATEN,11,Aceh
+11.06,Kabupaten Aceh Besar,KABUPATEN,11,Aceh
+11.07,Kabupaten Pidie,KABUPATEN,11,Aceh
+11.08,Kabupaten Aceh Utara,KABUPATEN,11,Aceh
+11.09,Kabupaten Simeulue,KABUPATEN,11,Aceh
+11.10,Kabupaten Aceh Singkil,KABUPATEN,11,Aceh
+11.11,Kabupaten Bireuen,KABUPATEN,11,Aceh
+11.12,Kabupaten Aceh Barat Daya,KABUPATEN,11,Aceh
+11.13,Kabupaten Gayo Lues,KABUPATEN,11,Aceh
+11.14,Kabupaten Aceh Jaya,KABUPATEN,11,Aceh
+11.15,Kabupaten Nagan Raya,KABUPATEN,11,Aceh
+11.16,Kabupaten Aceh Tamiang,KABUPATEN,11,Aceh
+11.17,Kabupaten Bener Meriah,KABUPATEN,11,Aceh
+11.18,Kabupaten Pidie Jaya,KABUPATEN,11,Aceh
+11.71,Kota Banda Aceh,KOTA,11,Aceh
+11.72,Kota Sabang,KOTA,11,Aceh
+11.73,Kota Lhokseumawe,KOTA,11,Aceh
+11.74,Kota Langsa,KOTA,11,Aceh
+11.75,Kota Subulussalam,KOTA,11,Aceh
+12.01,Kabupaten Tapanuli Tengah,KABUPATEN,12,Sumatera Utara
+12.02,Kabupaten Tapanuli Utara,KABUPATEN,12,Sumatera Utara
+12.03,Kabupaten Tapanuli Selatan,KABUPATEN,12,Sumatera Utara
+12.04,Kabupaten Nias,KABUPATEN,12,Sumatera Utara
+12.05,Kabupaten Langkat,KABUPATEN,12,Sumatera Utara
+12.06,Kabupaten Karo,KABUPATEN,12,Sumatera Utara
+12.07,Kabupaten Deli Serdang,KABUPATEN,12,Sumatera Utara
+12.08,Kabupaten Simalungun,KABUPATEN,12,Sumatera Utara
+12.09,Kabupaten Asahan,KABUPATEN,12,Sumatera Utara
+12.10,Kabupaten Labuhanbatu,KABUPATEN,12,Sumatera Utara
+12.11,Kabupaten Dairi,KABUPATEN,12,Sumatera Utara
+12.12,Kabupaten Toba,KABUPATEN,12,Sumatera Utara
+12.13,Kabupaten Mandailing Natal,KABUPATEN,12,Sumatera Utara
+12.14,Kabupaten Nias Selatan,KABUPATEN,12,Sumatera Utara
+12.15,Kabupaten Pakpak Bharat,KABUPATEN,12,Sumatera Utara
+12.16,Kabupaten Humbang Hasundutan,KABUPATEN,12,Sumatera Utara
+12.17,Kabupaten Samosir,KABUPATEN,12,Sumatera Utara
+12.18,Kabupaten Serdang Bedagai,KABUPATEN,12,Sumatera Utara
+12.19,Kabupaten Batu Bara,KABUPATEN,12,Sumatera Utara
+12.20,Kabupaten Padang Lawas Utara,KABUPATEN,12,Sumatera Utara
+12.21,Kabupaten Padang Lawas,KABUPATEN,12,Sumatera Utara
+12.22,Kabupaten Labuhanbatu Selatan,KABUPATEN,12,Sumatera Utara
+12.23,Kabupaten Labuhanbatu Utara,KABUPATEN,12,Sumatera Utara
+12.24,Kabupaten Nias Utara,KABUPATEN,12,Sumatera Utara
+12.25,Kabupaten Nias Barat,KABUPATEN,12,Sumatera Utara
+12.71,Kota Medan,KOTA,12,Sumatera Utara
+12.72,Kota Pematangsiantar,KOTA,12,Sumatera Utara
+12.73,Kota Sibolga,KOTA,12,Sumatera Utara
+12.74,Kota Tanjungbalai,KOTA,12,Sumatera Utara
+12.75,Kota Binjai,KOTA,12,Sumatera Utara
+12.76,Kota Tebing Tinggi,KOTA,12,Sumatera Utara
+12.77,Kota Padangsidimpuan,KOTA,12,Sumatera Utara
+12.78,Kota Gunungsitoli,KOTA,12,Sumatera Utara
+13.01,Kabupaten Pesisir Selatan,KABUPATEN,13,Sumatera Barat
+13.02,Kabupaten Solok,KABUPATEN,13,Sumatera Barat
+13.03,Kabupaten Sijunjung,KABUPATEN,13,Sumatera Barat
+13.04,Kabupaten Tanah Datar,KABUPATEN,13,Sumatera Barat
+13.05,Kabupaten Padang Pariaman,KABUPATEN,13,Sumatera Barat
+13.06,Kabupaten Agam,KABUPATEN,13,Sumatera Barat
+13.07,Kabupaten Lima Puluh Kota,KABUPATEN,13,Sumatera Barat
+13.08,Kabupaten Pasaman,KABUPATEN,13,Sumatera Barat
+13.09,Kabupaten Kepulauan Mentawai,KABUPATEN,13,Sumatera Barat
+13.10,Kabupaten Dharmasraya,KABUPATEN,13,Sumatera Barat
+13.11,Kabupaten Solok Selatan,KABUPATEN,13,Sumatera Barat
+13.12,Kabupaten Pasaman Barat,KABUPATEN,13,Sumatera Barat
+13.71,Kota Padang,KOTA,13,Sumatera Barat
+13.72,Kota Solok,KOTA,13,Sumatera Barat
+13.73,Kota Sawahlunto,KOTA,13,Sumatera Barat
+13.74,Kota Padang Panjang,KOTA,13,Sumatera Barat
+13.75,Kota Bukittinggi,KOTA,13,Sumatera Barat
+13.76,Kota Payakumbuh,KOTA,13,Sumatera Barat
+13.77,Kota Pariaman,KOTA,13,Sumatera Barat
+14.01,Kabupaten Kampar,KABUPATEN,14,Riau
+14.02,Kabupaten Indragiri Hulu,KABUPATEN,14,Riau
+14.03,Kabupaten Bengkalis,KABUPATEN,14,Riau
+14.04,Kabupaten Indragiri Hilir,KABUPATEN,14,Riau
+14.05,Kabupaten Pelalawan,KABUPATEN,14,Riau
+14.06,Kabupaten Rokan Hulu,KABUPATEN,14,Riau
+14.07,Kabupaten Rokan Hilir,KABUPATEN,14,Riau
+14.08,Kabupaten Siak,KABUPATEN,14,Riau
+14.09,Kabupaten Kuantan Singingi,KABUPATEN,14,Riau
+14.10,Kabupaten Kepulauan Meranti,KABUPATEN,14,Riau
+14.71,Kota Pekanbaru,KOTA,14,Riau
+14.72,Kota Dumai,KOTA,14,Riau
+15.01,Kabupaten Kerinci,KABUPATEN,15,Jambi
+15.02,Kabupaten Merangin,KABUPATEN,15,Jambi
+15.03,Kabupaten Sarolangun,KABUPATEN,15,Jambi
+15.04,Kabupaten Batanghari,KABUPATEN,15,Jambi
+15.05,Kabupaten Muaro Jambi,KABUPATEN,15,Jambi
+15.06,Kabupaten Tanjung Jabung Barat,KABUPATEN,15,Jambi
+15.07,Kabupaten Tanjung Jabung Timur,KABUPATEN,15,Jambi
+15.08,Kabupaten Bungo,KABUPATEN,15,Jambi
+15.09,Kabupaten Tebo,KABUPATEN,15,Jambi
+15.71,Kota Jambi,KOTA,15,Jambi
+15.72,Kota Sungai Penuh,KOTA,15,Jambi
+16.01,Kabupaten Ogan Komering Ulu,KABUPATEN,16,Sumatera Selatan
+16.02,Kabupaten Ogan Komering Ilir,KABUPATEN,16,Sumatera Selatan
+16.03,Kabupaten Muara Enim,KABUPATEN,16,Sumatera Selatan
+16.04,Kabupaten Lahat,KABUPATEN,16,Sumatera Selatan
+16.05,Kabupaten Musi Rawas,KABUPATEN,16,Sumatera Selatan
+16.06,Kabupaten Musi Banyuasin,KABUPATEN,16,Sumatera Selatan
+16.07,Kabupaten Banyuasin,KABUPATEN,16,Sumatera Selatan
+16.08,Kabupaten Ogan Komering Ulu Timur,KABUPATEN,16,Sumatera Selatan
+16.09,Kabupaten Ogan Komering Ulu Selatan,KABUPATEN,16,Sumatera Selatan
+16.10,Kabupaten Ogan Ilir,KABUPATEN,16,Sumatera Selatan
+16.11,Kabupaten Empat Lawang,KABUPATEN,16,Sumatera Selatan
+16.12,Kabupaten Penukal Abab Lematang Ilir,KABUPATEN,16,Sumatera Selatan
+16.13,Kabupaten Musi Rawas Utara,KABUPATEN,16,Sumatera Selatan
+16.71,Kota Palembang,KOTA,16,Sumatera Selatan
+16.72,Kota Pagar Alam,KOTA,16,Sumatera Selatan
+16.73,Kota Lubuk Linggau,KOTA,16,Sumatera Selatan
+16.74,Kota Prabumulih,KOTA,16,Sumatera Selatan
+17.01,Kabupaten Bengkulu Selatan,KABUPATEN,17,Bengkulu
+17.02,Kabupaten Rejang Lebong,KABUPATEN,17,Bengkulu
+17.03,Kabupaten Bengkulu Utara,KABUPATEN,17,Bengkulu
+17.04,Kabupaten Kaur,KABUPATEN,17,Bengkulu
+17.05,Kabupaten Seluma,KABUPATEN,17,Bengkulu
+17.06,Kabupaten Mukomuko,KABUPATEN,17,Bengkulu
+17.07,Kabupaten Lebong,KABUPATEN,17,Bengkulu
+17.08,Kabupaten Kepahiang,KABUPATEN,17,Bengkulu
+17.09,Kabupaten Bengkulu Tengah,KABUPATEN,17,Bengkulu
+17.71,Kota Bengkulu,KOTA,17,Bengkulu
+18.01,Kabupaten Lampung Selatan,KABUPATEN,18,Lampung
+18.02,Kabupaten Lampung Tengah,KABUPATEN,18,Lampung
+18.03,Kabupaten Lampung Utara,KABUPATEN,18,Lampung
+18.04,Kabupaten Lampung Barat,KABUPATEN,18,Lampung
+18.05,Kabupaten Tulang Bawang,KABUPATEN,18,Lampung
+18.06,Kabupaten Tanggamus,KABUPATEN,18,Lampung
+18.07,Kabupaten Lampung Timur,KABUPATEN,18,Lampung
+18.08,Kabupaten Way Kanan,KABUPATEN,18,Lampung
+18.09,Kabupaten Pesawaran,KABUPATEN,18,Lampung
+18.10,Kabupaten Pringsewu,KABUPATEN,18,Lampung
+18.11,Kabupaten Mesuji,KABUPATEN,18,Lampung
+18.12,Kabupaten Tulang Bawang Barat,KABUPATEN,18,Lampung
+18.13,Kabupaten Pesisir Barat,KABUPATEN,18,Lampung
+18.71,Kota Bandar Lampung,KOTA,18,Lampung
+18.72,Kota Metro,KOTA,18,Lampung
+19.01,Kabupaten Bangka,KABUPATEN,19,Kepulauan Bangka Belitung
+19.02,Kabupaten Belitung,KABUPATEN,19,Kepulauan Bangka Belitung
+19.03,Kabupaten Bangka Selatan,KABUPATEN,19,Kepulauan Bangka Belitung
+19.04,Kabupaten Bangka Tengah,KABUPATEN,19,Kepulauan Bangka Belitung
+19.05,Kabupaten Bangka Barat,KABUPATEN,19,Kepulauan Bangka Belitung
+19.06,Kabupaten Belitung Timur,KABUPATEN,19,Kepulauan Bangka Belitung
+19.71,Kota Pangkal Pinang,KOTA,19,Kepulauan Bangka Belitung
+21.01,Kabupaten Bintan,KABUPATEN,21,Kepulauan Riau
+21.02,Kabupaten Karimun,KABUPATEN,21,Kepulauan Riau
+21.03,Kabupaten Natuna,KABUPATEN,21,Kepulauan Riau
+21.04,Kabupaten Lingga,KABUPATEN,21,Kepulauan Riau
+21.05,Kabupaten Kepulauan Anambas,KABUPATEN,21,Kepulauan Riau
+21.71,Kota Batam,KOTA,21,Kepulauan Riau
+21.72,Kota Tanjung Pinang,KOTA,21,Kepulauan Riau
+31.01,Kabupaten Administrasi Kepulauan Seribu,KABUPATEN,31,Daerah Khusus Ibukota Jakarta
+31.71,Kota Administrasi Jakarta Pusat,KOTA,31,Daerah Khusus Ibukota Jakarta
+31.72,Kota Administrasi Jakarta Utara,KOTA,31,Daerah Khusus Ibukota Jakarta
+31.73,Kota Administrasi Jakarta Barat,KOTA,31,Daerah Khusus Ibukota Jakarta
+31.74,Kota Administrasi Jakarta Selatan,KOTA,31,Daerah Khusus Ibukota Jakarta
+31.75,Kota Administrasi Jakarta Timur,KOTA,31,Daerah Khusus Ibukota Jakarta
+32.01,Kabupaten Bogor,KABUPATEN,32,Jawa Barat
+32.02,Kabupaten Sukabumi,KABUPATEN,32,Jawa Barat
+32.03,Kabupaten Cianjur,KABUPATEN,32,Jawa Barat
+32.04,Kabupaten Bandung,KABUPATEN,32,Jawa Barat
+32.05,Kabupaten Garut,KABUPATEN,32,Jawa Barat
+32.06,Kabupaten Tasikmalaya,KABUPATEN,32,Jawa Barat
+32.07,Kabupaten Ciamis,KABUPATEN,32,Jawa Barat
+32.08,Kabupaten Kuningan,KABUPATEN,32,Jawa Barat
+32.09,Kabupaten Cirebon,KABUPATEN,32,Jawa Barat
+32.10,Kabupaten Majalengka,KABUPATEN,32,Jawa Barat
+32.11,Kabupaten Sumedang,KABUPATEN,32,Jawa Barat
+32.12,Kabupaten Indramayu,KABUPATEN,32,Jawa Barat
+32.13,Kabupaten Subang,KABUPATEN,32,Jawa Barat
+32.14,Kabupaten Purwakarta,KABUPATEN,32,Jawa Barat
+32.15,Kabupaten Karawang,KABUPATEN,32,Jawa Barat
+32.16,Kabupaten Bekasi,KABUPATEN,32,Jawa Barat
+32.17,Kabupaten Bandung Barat,KABUPATEN,32,Jawa Barat
+32.18,Kabupaten Pangandaran,KABUPATEN,32,Jawa Barat
+32.71,Kota Bogor,KOTA,32,Jawa Barat
+32.72,Kota Sukabumi,KOTA,32,Jawa Barat
+32.73,Kota Bandung,KOTA,32,Jawa Barat
+32.74,Kota Cirebon,KOTA,32,Jawa Barat
+32.75,Kota Bekasi,KOTA,32,Jawa Barat
+32.76,Kota Depok,KOTA,32,Jawa Barat
+32.77,Kota Cimahi,KOTA,32,Jawa Barat
+32.78,Kota Tasikmalaya,KOTA,32,Jawa Barat
+32.79,Kota Banjar,KOTA,32,Jawa Barat
+33.01,Kabupaten Cilacap,KABUPATEN,33,Jawa Tengah
+33.02,Kabupaten Banyumas,KABUPATEN,33,Jawa Tengah
+33.03,Kabupaten Purbalingga,KABUPATEN,33,Jawa Tengah
+33.04,Kabupaten Banjarnegara,KABUPATEN,33,Jawa Tengah
+33.05,Kabupaten Kebumen,KABUPATEN,33,Jawa Tengah
+33.06,Kabupaten Purworejo,KABUPATEN,33,Jawa Tengah
+33.07,Kabupaten Wonosobo,KABUPATEN,33,Jawa Tengah
+33.08,Kabupaten Magelang,KABUPATEN,33,Jawa Tengah
+33.09,Kabupaten Boyolali,KABUPATEN,33,Jawa Tengah
+33.10,Kabupaten Klaten,KABUPATEN,33,Jawa Tengah
+33.11,Kabupaten Sukoharjo,KABUPATEN,33,Jawa Tengah
+33.12,Kabupaten Wonogiri,KABUPATEN,33,Jawa Tengah
+33.13,Kabupaten Karanganyar,KABUPATEN,33,Jawa Tengah
+33.14,Kabupaten Sragen,KABUPATEN,33,Jawa Tengah
+33.15,Kabupaten Grobogan,KABUPATEN,33,Jawa Tengah
+33.16,Kabupaten Blora,KABUPATEN,33,Jawa Tengah
+33.17,Kabupaten Rembang,KABUPATEN,33,Jawa Tengah
+33.18,Kabupaten Pati,KABUPATEN,33,Jawa Tengah
+33.19,Kabupaten Kudus,KABUPATEN,33,Jawa Tengah
+33.20,Kabupaten Jepara,KABUPATEN,33,Jawa Tengah
+33.21,Kabupaten Demak,KABUPATEN,33,Jawa Tengah
+33.22,Kabupaten Semarang,KABUPATEN,33,Jawa Tengah
+33.23,Kabupaten Temanggung,KABUPATEN,33,Jawa Tengah
+33.24,Kabupaten Kendal,KABUPATEN,33,Jawa Tengah
+33.25,Kabupaten Batang,KABUPATEN,33,Jawa Tengah
+33.26,Kabupaten Pekalongan,KABUPATEN,33,Jawa Tengah
+33.27,Kabupaten Pemalang,KABUPATEN,33,Jawa Tengah
+33.28,Kabupaten Tegal,KABUPATEN,33,Jawa Tengah
+33.29,Kabupaten Brebes,KABUPATEN,33,Jawa Tengah
+33.71,Kota Magelang,KOTA,33,Jawa Tengah
+33.72,Kota Surakarta,KOTA,33,Jawa Tengah
+33.73,Kota Salatiga,KOTA,33,Jawa Tengah
+33.74,Kota Semarang,KOTA,33,Jawa Tengah
+33.75,Kota Pekalongan,KOTA,33,Jawa Tengah
+33.76,Kota Tegal,KOTA,33,Jawa Tengah
+34.01,Kabupaten Kulon Progo,KABUPATEN,34,Daerah Istimewa Yogyakarta
+34.02,Kabupaten Bantul,KABUPATEN,34,Daerah Istimewa Yogyakarta
+34.03,Kabupaten Gunungkidul,KABUPATEN,34,Daerah Istimewa Yogyakarta
+34.04,Kabupaten Sleman,KABUPATEN,34,Daerah Istimewa Yogyakarta
+34.71,Kota Yogyakarta,KOTA,34,Daerah Istimewa Yogyakarta
+35.01,Kabupaten Pacitan,KABUPATEN,35,Jawa Timur
+35.02,Kabupaten Ponorogo,KABUPATEN,35,Jawa Timur
+35.03,Kabupaten Trenggalek,KABUPATEN,35,Jawa Timur
+35.04,Kabupaten Tulungagung,KABUPATEN,35,Jawa Timur
+35.05,Kabupaten Blitar,KABUPATEN,35,Jawa Timur
+35.06,Kabupaten Kediri,KABUPATEN,35,Jawa Timur
+35.07,Kabupaten Malang,KABUPATEN,35,Jawa Timur
+35.08,Kabupaten Lumajang,KABUPATEN,35,Jawa Timur
+35.09,Kabupaten Jember,KABUPATEN,35,Jawa Timur
+35.10,Kabupaten Banyuwangi,KABUPATEN,35,Jawa Timur
+35.11,Kabupaten Bondowoso,KABUPATEN,35,Jawa Timur
+35.12,Kabupaten Situbondo,KABUPATEN,35,Jawa Timur
+35.13,Kabupaten Probolinggo,KABUPATEN,35,Jawa Timur
+35.14,Kabupaten Pasuruan,KABUPATEN,35,Jawa Timur
+35.15,Kabupaten Sidoarjo,KABUPATEN,35,Jawa Timur
+35.16,Kabupaten Mojokerto,KABUPATEN,35,Jawa Timur
+35.17,Kabupaten Jombang,KABUPATEN,35,Jawa Timur
+35.18,Kabupaten Nganjuk,KABUPATEN,35,Jawa Timur
+35.19,Kabupaten Madiun,KABUPATEN,35,Jawa Timur
+35.20,Kabupaten Magetan,KABUPATEN,35,Jawa Timur
+35.21,Kabupaten Ngawi,KABUPATEN,35,Jawa Timur
+35.22,Kabupaten Bojonegoro,KABUPATEN,35,Jawa Timur
+35.23,Kabupaten Tuban,KABUPATEN,35,Jawa Timur
+35.24,Kabupaten Lamongan,KABUPATEN,35,Jawa Timur
+35.25,Kabupaten Gresik,KABUPATEN,35,Jawa Timur
+35.26,Kabupaten Bangkalan,KABUPATEN,35,Jawa Timur
+35.27,Kabupaten Sampang,KABUPATEN,35,Jawa Timur
+35.28,Kabupaten Pamekasan,KABUPATEN,35,Jawa Timur
+35.29,Kabupaten Sumenep,KABUPATEN,35,Jawa Timur
+35.71,Kota Kediri,KOTA,35,Jawa Timur
+35.72,Kota Blitar,KOTA,35,Jawa Timur
+35.73,Kota Malang,KOTA,35,Jawa Timur
+35.74,Kota Probolinggo,KOTA,35,Jawa Timur
+35.75,Kota Pasuruan,KOTA,35,Jawa Timur
+35.76,Kota Mojokerto,KOTA,35,Jawa Timur
+35.77,Kota Madiun,KOTA,35,Jawa Timur
+35.78,Kota Surabaya,KOTA,35,Jawa Timur
+35.79,Kota Batu,KOTA,35,Jawa Timur
+36.01,Kabupaten Pandeglang,KABUPATEN,36,Banten
+36.02,Kabupaten Lebak,KABUPATEN,36,Banten
+36.03,Kabupaten Tangerang,KABUPATEN,36,Banten
+36.04,Kabupaten Serang,KABUPATEN,36,Banten
+36.71,Kota Tangerang,KOTA,36,Banten
+36.72,Kota Cilegon,KOTA,36,Banten
+36.73,Kota Serang,KOTA,36,Banten
+36.74,Kota Tangerang Selatan,KOTA,36,Banten
+51.01,Kabupaten Jembrana,KABUPATEN,51,Bali
+51.02,Kabupaten Tabanan,KABUPATEN,51,Bali
+51.03,Kabupaten Badung,KABUPATEN,51,Bali
+51.04,Kabupaten Gianyar,KABUPATEN,51,Bali
+51.05,Kabupaten Klungkung,KABUPATEN,51,Bali
+51.06,Kabupaten Bangli,KABUPATEN,51,Bali
+51.07,Kabupaten Karangasem,KABUPATEN,51,Bali
+51.08,Kabupaten Buleleng,KABUPATEN,51,Bali
+51.71,Kota Denpasar,KOTA,51,Bali
+52.01,Kabupaten Lombok Barat,KABUPATEN,52,Nusa Tenggara Barat
+52.02,Kabupaten Lombok Tengah,KABUPATEN,52,Nusa Tenggara Barat
+52.03,Kabupaten Lombok Timur,KABUPATEN,52,Nusa Tenggara Barat
+52.04,Kabupaten Sumbawa,KABUPATEN,52,Nusa Tenggara Barat
+52.05,Kabupaten Dompu,KABUPATEN,52,Nusa Tenggara Barat
+52.06,Kabupaten Bima,KABUPATEN,52,Nusa Tenggara Barat
+52.07,Kabupaten Sumbawa Barat,KABUPATEN,52,Nusa Tenggara Barat
+52.08,Kabupaten Lombok Utara,KABUPATEN,52,Nusa Tenggara Barat
+52.71,Kota Mataram,KOTA,52,Nusa Tenggara Barat
+52.72,Kota Bima,KOTA,52,Nusa Tenggara Barat
+53.01,Kabupaten Kupang,KABUPATEN,53,Nusa Tenggara Timur
+53.02,Kabupaten Timor Tengah Selatan,KABUPATEN,53,Nusa Tenggara Timur
+53.03,Kabupaten Timor Tengah Utara,KABUPATEN,53,Nusa Tenggara Timur
+53.04,Kabupaten Belu,KABUPATEN,53,Nusa Tenggara Timur
+53.05,Kabupaten Alor,KABUPATEN,53,Nusa Tenggara Timur
+53.06,Kabupaten Flores Timur,KABUPATEN,53,Nusa Tenggara Timur
+53.07,Kabupaten Sikka,KABUPATEN,53,Nusa Tenggara Timur
+53.08,Kabupaten Ende,KABUPATEN,53,Nusa Tenggara Timur
+53.09,Kabupaten Ngada,KABUPATEN,53,Nusa Tenggara Timur
+53.10,Kabupaten Manggarai,KABUPATEN,53,Nusa Tenggara Timur
+53.11,Kabupaten Sumba Timur,KABUPATEN,53,Nusa Tenggara Timur
+53.12,Kabupaten Sumba Barat,KABUPATEN,53,Nusa Tenggara Timur
+53.13,Kabupaten Lembata,KABUPATEN,53,Nusa Tenggara Timur
+53.14,Kabupaten Rote Ndao,KABUPATEN,53,Nusa Tenggara Timur
+53.15,Kabupaten Manggarai Barat,KABUPATEN,53,Nusa Tenggara Timur
+53.16,Kabupaten Nagekeo,KABUPATEN,53,Nusa Tenggara Timur
+53.17,Kabupaten Sumba Tengah,KABUPATEN,53,Nusa Tenggara Timur
+53.18,Kabupaten Sumba Barat Daya,KABUPATEN,53,Nusa Tenggara Timur
+53.19,Kabupaten Manggarai Timur,KABUPATEN,53,Nusa Tenggara Timur
+53.20,Kabupaten Sabu Raijua,KABUPATEN,53,Nusa Tenggara Timur
+53.21,Kabupaten Malaka,KABUPATEN,53,Nusa Tenggara Timur
+53.71,Kota Kupang,KOTA,53,Nusa Tenggara Timur
+61.01,Kabupaten Sambas,KABUPATEN,61,Kalimantan Barat
+61.02,Kabupaten Mempawah,KABUPATEN,61,Kalimantan Barat
+61.03,Kabupaten Sanggau,KABUPATEN,61,Kalimantan Barat
+61.04,Kabupaten Ketapang,KABUPATEN,61,Kalimantan Barat
+61.05,Kabupaten Sintang,KABUPATEN,61,Kalimantan Barat
+61.06,Kabupaten Kapuas Hulu,KABUPATEN,61,Kalimantan Barat
+61.07,Kabupaten Bengkayang,KABUPATEN,61,Kalimantan Barat
+61.08,Kabupaten Landak,KABUPATEN,61,Kalimantan Barat
+61.09,Kabupaten Sekadau,KABUPATEN,61,Kalimantan Barat
+61.10,Kabupaten Melawi,KABUPATEN,61,Kalimantan Barat
+61.11,Kabupaten Kayong Utara,KABUPATEN,61,Kalimantan Barat
+61.12,Kabupaten Kubu Raya,KABUPATEN,61,Kalimantan Barat
+61.71,Kota Pontianak,KOTA,61,Kalimantan Barat
+61.72,Kota Singkawang,KOTA,61,Kalimantan Barat
+62.01,Kabupaten Kotawaringin Barat,KABUPATEN,62,Kalimantan Tengah
+62.02,Kabupaten Kotawaringin Timur,KABUPATEN,62,Kalimantan Tengah
+62.03,Kabupaten Kapuas,KABUPATEN,62,Kalimantan Tengah
+62.04,Kabupaten Barito Selatan,KABUPATEN,62,Kalimantan Tengah
+62.05,Kabupaten Barito Utara,KABUPATEN,62,Kalimantan Tengah
+62.06,Kabupaten Katingan,KABUPATEN,62,Kalimantan Tengah
+62.07,Kabupaten Seruyan,KABUPATEN,62,Kalimantan Tengah
+62.08,Kabupaten Sukamara,KABUPATEN,62,Kalimantan Tengah
+62.09,Kabupaten Lamandau,KABUPATEN,62,Kalimantan Tengah
+62.10,Kabupaten Gunung Mas,KABUPATEN,62,Kalimantan Tengah
+62.11,Kabupaten Pulang Pisau,KABUPATEN,62,Kalimantan Tengah
+62.12,Kabupaten Murung Raya,KABUPATEN,62,Kalimantan Tengah
+62.13,Kabupaten Barito Timur,KABUPATEN,62,Kalimantan Tengah
+62.71,Kota Palangkaraya,KOTA,62,Kalimantan Tengah
+63.01,Kabupaten Tanah Laut,KABUPATEN,63,Kalimantan Selatan
+63.02,Kabupaten Kotabaru,KABUPATEN,63,Kalimantan Selatan
+63.03,Kabupaten Banjar,KABUPATEN,63,Kalimantan Selatan
+63.04,Kabupaten Barito Kuala,KABUPATEN,63,Kalimantan Selatan
+63.05,Kabupaten Tapin,KABUPATEN,63,Kalimantan Selatan
+63.06,Kabupaten Hulu Sungai Selatan,KABUPATEN,63,Kalimantan Selatan
+63.07,Kabupaten Hulu Sungai Tengah,KABUPATEN,63,Kalimantan Selatan
+63.08,Kabupaten Hulu Sungai Utara,KABUPATEN,63,Kalimantan Selatan
+63.09,Kabupaten Tabalong,KABUPATEN,63,Kalimantan Selatan
+63.10,Kabupaten Tanah Bumbu,KABUPATEN,63,Kalimantan Selatan
+63.11,Kabupaten Balangan,KABUPATEN,63,Kalimantan Selatan
+63.71,Kota Banjarmasin,KOTA,63,Kalimantan Selatan
+63.72,Kota Banjarbaru,KOTA,63,Kalimantan Selatan
+64.01,Kabupaten Paser,KABUPATEN,64,Kalimantan Timur
+64.02,Kabupaten Kutai Kartanegara,KABUPATEN,64,Kalimantan Timur
+64.03,Kabupaten Berau,KABUPATEN,64,Kalimantan Timur
+64.07,Kabupaten Kutai Barat,KABUPATEN,64,Kalimantan Timur
+64.08,Kabupaten Kutai Timur,KABUPATEN,64,Kalimantan Timur
+64.09,Kabupaten Penajam Paser Utara,KABUPATEN,64,Kalimantan Timur
+64.11,Kabupaten Mahakam Ulu,KABUPATEN,64,Kalimantan Timur
+64.71,Kota Balikpapan,KOTA,64,Kalimantan Timur
+64.72,Kota Samarinda,KOTA,64,Kalimantan Timur
+64.74,Kota Bontang,KOTA,64,Kalimantan Timur
+65.01,Kabupaten Bulungan,KABUPATEN,65,Kalimantan Utara
+65.02,Kabupaten Malinau,KABUPATEN,65,Kalimantan Utara
+65.03,Kabupaten Nunukan,KABUPATEN,65,Kalimantan Utara
+65.04,Kabupaten Tana Tidung,KABUPATEN,65,Kalimantan Utara
+65.71,Kota Tarakan,KOTA,65,Kalimantan Utara
+71.01,Kabupaten Bolaang Mongondow,KABUPATEN,71,Sulawesi Utara
+71.02,Kabupaten Minahasa,KABUPATEN,71,Sulawesi Utara
+71.03,Kabupaten Kepulauan Sangihe,KABUPATEN,71,Sulawesi Utara
+71.04,Kabupaten Kepulauan Talaud,KABUPATEN,71,Sulawesi Utara
+71.05,Kabupaten Minahasa Selatan,KABUPATEN,71,Sulawesi Utara
+71.06,Kabupaten Minahasa Utara,KABUPATEN,71,Sulawesi Utara
+71.07,Kabupaten Minahasa Tenggara,KABUPATEN,71,Sulawesi Utara
+71.08,Kabupaten Bolaang Mongondow Utara,KABUPATEN,71,Sulawesi Utara
+71.09,Kabupaten Kep. Siau Tagulandang Biaro,KABUPATEN,71,Sulawesi Utara
+71.10,Kabupaten Bolaang Mongondow Timur,KABUPATEN,71,Sulawesi Utara
+71.11,Kabupaten Bolaang Mongondow Selatan,KABUPATEN,71,Sulawesi Utara
+71.71,Kota Manado,KOTA,71,Sulawesi Utara
+71.72,Kota Bitung,KOTA,71,Sulawesi Utara
+71.73,Kota Tomohon,KOTA,71,Sulawesi Utara
+71.74,Kota Kotamobagu,KOTA,71,Sulawesi Utara
+72.01,Kabupaten Banggai,KABUPATEN,72,Sulawesi Tengah
+72.02,Kabupaten Poso,KABUPATEN,72,Sulawesi Tengah
+72.03,Kabupaten Donggala,KABUPATEN,72,Sulawesi Tengah
+72.04,Kabupaten Toli-Toli,KABUPATEN,72,Sulawesi Tengah
+72.05,Kabupaten Buol,KABUPATEN,72,Sulawesi Tengah
+72.06,Kabupaten Morowali,KABUPATEN,72,Sulawesi Tengah
+72.07,Kabupaten Banggai Kepulauan,KABUPATEN,72,Sulawesi Tengah
+72.08,Kabupaten Parigi Moutong,KABUPATEN,72,Sulawesi Tengah
+72.09,Kabupaten Tojo Una Una,KABUPATEN,72,Sulawesi Tengah
+72.10,Kabupaten Sigi,KABUPATEN,72,Sulawesi Tengah
+72.11,Kabupaten Banggai Laut,KABUPATEN,72,Sulawesi Tengah
+72.12,Kabupaten Morowali Utara,KABUPATEN,72,Sulawesi Tengah
+72.71,Kota Palu,KOTA,72,Sulawesi Tengah
+73.01,Kabupaten Kepulauan Selayar,KABUPATEN,73,Sulawesi Selatan
+73.02,Kabupaten Bulukumba,KABUPATEN,73,Sulawesi Selatan
+73.03,Kabupaten Bantaeng,KABUPATEN,73,Sulawesi Selatan
+73.04,Kabupaten Jeneponto,KABUPATEN,73,Sulawesi Selatan
+73.05,Kabupaten Takalar,KABUPATEN,73,Sulawesi Selatan
+73.06,Kabupaten Gowa,KABUPATEN,73,Sulawesi Selatan
+73.07,Kabupaten Sinjai,KABUPATEN,73,Sulawesi Selatan
+73.08,Kabupaten Bone,KABUPATEN,73,Sulawesi Selatan
+73.09,Kabupaten Maros,KABUPATEN,73,Sulawesi Selatan
+73.10,Kabupaten Pangkajene dan Kepulauan,KABUPATEN,73,Sulawesi Selatan
+73.11,Kabupaten Barru,KABUPATEN,73,Sulawesi Selatan
+73.12,Kabupaten Soppeng,KABUPATEN,73,Sulawesi Selatan
+73.13,Kabupaten Wajo,KABUPATEN,73,Sulawesi Selatan
+73.14,Kabupaten Sidenreng Rappang,KABUPATEN,73,Sulawesi Selatan
+73.15,Kabupaten Pinrang,KABUPATEN,73,Sulawesi Selatan
+73.16,Kabupaten Enrekang,KABUPATEN,73,Sulawesi Selatan
+73.17,Kabupaten Luwu,KABUPATEN,73,Sulawesi Selatan
+73.18,Kabupaten Tana Toraja,KABUPATEN,73,Sulawesi Selatan
+73.22,Kabupaten Luwu Utara,KABUPATEN,73,Sulawesi Selatan
+73.24,Kabupaten Luwu Timur,KABUPATEN,73,Sulawesi Selatan
+73.26,Kabupaten Toraja Utara,KABUPATEN,73,Sulawesi Selatan
+73.71,Kota Makassar,KOTA,73,Sulawesi Selatan
+73.72,Kota Parepare,KOTA,73,Sulawesi Selatan
+73.73,Kota Palopo,KOTA,73,Sulawesi Selatan
+74.01,Kabupaten Kolaka,KABUPATEN,74,Sulawesi Tenggara
+74.02,Kabupaten Konawe,KABUPATEN,74,Sulawesi Tenggara
+74.03,Kabupaten Muna,KABUPATEN,74,Sulawesi Tenggara
+74.04,Kabupaten Buton,KABUPATEN,74,Sulawesi Tenggara
+74.05,Kabupaten Konawe Selatan,KABUPATEN,74,Sulawesi Tenggara
+74.06,Kabupaten Bombana,KABUPATEN,74,Sulawesi Tenggara
+74.07,Kabupaten Wakatobi,KABUPATEN,74,Sulawesi Tenggara
+74.08,Kabupaten Kolaka Utara,KABUPATEN,74,Sulawesi Tenggara
+74.09,Kabupaten Konawe Utara,KABUPATEN,74,Sulawesi Tenggara
+74.10,Kabupaten Buton Utara,KABUPATEN,74,Sulawesi Tenggara
+74.11,Kabupaten Kolaka Timur,KABUPATEN,74,Sulawesi Tenggara
+74.12,Kabupaten Konawe Kepulauan,KABUPATEN,74,Sulawesi Tenggara
+74.13,Kabupaten Muna Barat,KABUPATEN,74,Sulawesi Tenggara
+74.14,Kabupaten Buton Tengah,KABUPATEN,74,Sulawesi Tenggara
+74.15,Kabupaten Buton Selatan,KABUPATEN,74,Sulawesi Tenggara
+74.71,Kota Kendari,KOTA,74,Sulawesi Tenggara
+74.72,Kota Bau Bau,KOTA,74,Sulawesi Tenggara
+75.01,Kabupaten Gorontalo,KABUPATEN,75,Gorontalo
+75.02,Kabupaten Boalemo,KABUPATEN,75,Gorontalo
+75.03,Kabupaten Bone Bolango,KABUPATEN,75,Gorontalo
+75.04,Kabupaten Pohuwato,KABUPATEN,75,Gorontalo
+75.05,Kabupaten Gorontalo Utara,KABUPATEN,75,Gorontalo
+75.71,Kota Gorontalo,KOTA,75,Gorontalo
+76.01,Kabupaten Pasangkayu,KABUPATEN,76,Sulawesi Barat
+76.02,Kabupaten Mamuju,KABUPATEN,76,Sulawesi Barat
+76.03,Kabupaten Mamasa,KABUPATEN,76,Sulawesi Barat
+76.04,Kabupaten Polewali Mandar,KABUPATEN,76,Sulawesi Barat
+76.05,Kabupaten Majene,KABUPATEN,76,Sulawesi Barat
+76.06,Kabupaten Mamuju Tengah,KABUPATEN,76,Sulawesi Barat
+81.01,Kabupaten Maluku Tengah,KABUPATEN,81,Maluku
+81.02,Kabupaten Maluku Tenggara,KABUPATEN,81,Maluku
+81.03,Kabupaten Kepulauan Tanimbar,KABUPATEN,81,Maluku
+81.04,Kabupaten Buru,KABUPATEN,81,Maluku
+81.05,Kabupaten Seram Bagian Timur,KABUPATEN,81,Maluku
+81.06,Kabupaten Seram Bagian Barat,KABUPATEN,81,Maluku
+81.07,Kabupaten Kepulauan Aru,KABUPATEN,81,Maluku
+81.08,Kabupaten Maluku Barat Daya,KABUPATEN,81,Maluku
+81.09,Kabupaten Buru Selatan,KABUPATEN,81,Maluku
+81.71,Kota Ambon,KOTA,81,Maluku
+81.72,Kota Tual,KOTA,81,Maluku
+82.01,Kabupaten Halmahera Barat,KABUPATEN,82,Maluku Utara
+82.02,Kabupaten Halmahera Tengah,KABUPATEN,82,Maluku Utara
+82.03,Kabupaten Halmahera Utara,KABUPATEN,82,Maluku Utara
+82.04,Kabupaten Halmahera Selatan,KABUPATEN,82,Maluku Utara
+82.05,Kabupaten Kepulauan Sula,KABUPATEN,82,Maluku Utara
+82.06,Kabupaten Halmahera Timur,KABUPATEN,82,Maluku Utara
+82.07,Kabupaten Pulau Morotai,KABUPATEN,82,Maluku Utara
+82.08,Kabupaten Pulau Taliabu,KABUPATEN,82,Maluku Utara
+82.71,Kota Ternate,KOTA,82,Maluku Utara
+82.72,Kota Tidore Kepulauan,KOTA,82,Maluku Utara
+91.03,Kabupaten Jayapura,KABUPATEN,91,Papua
+91.05,Kabupaten Kepulauan Yapen,KABUPATEN,91,Papua
+91.06,Kabupaten Biak Numfor,KABUPATEN,91,Papua
+91.10,Kabupaten Sarmi,KABUPATEN,91,Papua
+91.11,Kabupaten Keerom,KABUPATEN,91,Papua
+91.15,Kabupaten Waropen,KABUPATEN,91,Papua
+91.19,Kabupaten Supiori,KABUPATEN,91,Papua
+91.20,Kabupaten Mamberamo Raya,KABUPATEN,91,Papua
+91.71,Kota Jayapura,KOTA,91,Papua
+92.02,Kabupaten Manokwari,KABUPATEN,92,Papua Barat
+92.03,Kabupaten Fak Fak,KABUPATEN,92,Papua Barat
+92.06,Kabupaten Teluk Bintuni,KABUPATEN,92,Papua Barat
+92.07,Kabupaten Teluk Wondama,KABUPATEN,92,Papua Barat
+92.08,Kabupaten Kaimana,KABUPATEN,92,Papua Barat
+92.11,Kabupaten Manokwari Selatan,KABUPATEN,92,Papua Barat
+92.12,Kabupaten Pegunungan Arfak,KABUPATEN,92,Papua Barat
+93.01,Kabupaten Merauke,KABUPATEN,93,Papua Selatan
+93.02,Kabupaten Boven Digoel,KABUPATEN,93,Papua Selatan
+93.03,Kabupaten Mappi,KABUPATEN,93,Papua Selatan
+93.04,Kabupaten Asmat,KABUPATEN,93,Papua Selatan
+94.01,Kabupaten Nabire,KABUPATEN,94,Papua Tengah
+94.02,Kabupaten Puncak Jaya,KABUPATEN,94,Papua Tengah
+94.03,Kabupaten Paniai,KABUPATEN,94,Papua Tengah
+94.04,Kabupaten Mimika,KABUPATEN,94,Papua Tengah
+94.05,Kabupaten Puncak,KABUPATEN,94,Papua Tengah
+94.06,Kabupaten Dogiyai,KABUPATEN,94,Papua Tengah
+94.07,Kabupaten Intan Jaya,KABUPATEN,94,Papua Tengah
+94.08,Kabupaten Deiyai,KABUPATEN,94,Papua Tengah
+95.01,Kabupaten Jayawijaya,KABUPATEN,95,Papua Pegunungan
+95.02,Kabupaten Pegunungan Bintang,KABUPATEN,95,Papua Pegunungan
+95.03,Kabupaten Yahukimo,KABUPATEN,95,Papua Pegunungan
+95.04,Kabupaten Tolikara,KABUPATEN,95,Papua Pegunungan
+95.05,Kabupaten Mamberamo Tengah,KABUPATEN,95,Papua Pegunungan
+95.06,Kabupaten Yalimo,KABUPATEN,95,Papua Pegunungan
+95.07,Kabupaten Lanny Jaya,KABUPATEN,95,Papua Pegunungan
+95.08,Kabupaten Nduga,KABUPATEN,95,Papua Pegunungan
+96.01,Kabupaten Sorong,KABUPATEN,96,Papua Barat Daya
+96.02,Kabupaten Sorong Selatan,KABUPATEN,96,Papua Barat Daya
+96.03,Kabupaten Raja Ampat,KABUPATEN,96,Papua Barat Daya
+96.04,Kabupaten Tambrauw,KABUPATEN,96,Papua Barat Daya
+96.05,Kabupaten Maybrat,KABUPATEN,96,Papua Barat Daya
+96.71,Kota Sorong,KOTA,96,Papua Barat Daya

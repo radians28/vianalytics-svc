@@ -40,6 +40,7 @@ class TOrder(db.Model):
     total_quantity = db.Column(sa.Integer())
     shipping_fee = db.Column(sa.Numeric(precision=18, scale=2))
     gmv_2 = db.Column(sa.Numeric(precision=18, scale=2), comment='GMV level order: nilai order diambil sekali per order bila m_channel.gmv2_dedup_by_order (Shopee, TikTok, Tokopedia), selain itu dijumlah per baris item (Lazada, Blibli)')
+    zip_code = db.Column(sa.Text(), comment='kode pos pengiriman dari file marketplace (5 digit)')
     etl_run_id = db.Column(sa.BigInteger())
     created_at = db.Column(sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()'), comment='timestamptz: instan waktu absolut; tampil dalam Asia/Jakarta (WIB) pada session TimeZone default')
     updated_at = db.Column(sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()'), comment='timestamptz: instan waktu absolut; tampil dalam Asia/Jakarta (WIB) pada session TimeZone default')
