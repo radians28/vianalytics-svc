@@ -31,6 +31,7 @@ from app.models.royal_canin.datamart import (  # noqa: E402
     DmSalesDaily,
     DmSalesSkuDaily,
 )
+from app.models.royal_canin.custom_period import CustomPeriod  # noqa: E402
 
 __all__ = [
     'SCHEMA',
@@ -61,4 +62,5 @@ __all__ = [
     'TTraffic',
     'DmSalesDaily',
     'DmSalesSkuDaily',
+    'CustomPeriod',
 ]
