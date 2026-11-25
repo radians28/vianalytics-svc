@@ -1,7 +1,11 @@
+"""Custom reporting periods (P01-P13 per year), filled daily by the Airflow `custom_periods` DAG."""
 from app.extensions import db
+from app.models.royal_canin import SCHEMA
+
 
 class CustomPeriod(db.Model):
     __tablename__ = 'custom_period'
+    __table_args__ = {'schema': SCHEMA}
 
     period_key = db.Column(db.Integer, nullable=False, primary_key=True)
     year = db.Column(db.Integer, nullable=False)

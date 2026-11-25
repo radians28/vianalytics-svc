@@ -112,4 +112,13 @@ def downgrade():
     op.execute("DROP FUNCTION IF EXISTS royal_canin.set_updated_at()")
     op.execute("DROP FUNCTION IF EXISTS royal_canin.jakarta_date(timestamp with time zone)")
     op.execute("DROP FUNCTION IF EXISTS royal_canin.to_jakarta_ts(text, text)")
-    op.execute("DROP SCHEMA IF EXISTS royal_canin")
+    # the schema stays while it holds custom_period (created earlier by 3e6f881832f9)
+    op.execute("""
+        DO $do$
+        BEGIN
+            IF to_regclass('royal_canin.custom_period') IS NULL THEN
+                DROP SCHEMA IF EXISTS royal_canin;
+            END IF;
+        END
+        $do$
+    """)
